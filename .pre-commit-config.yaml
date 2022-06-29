@@ -13,3 +13,8 @@ repos:
     rev: 0.3.9
     hooks:
       - id: nbstripout
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+        name: isort (python)
