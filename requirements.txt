@@ -5,3 +5,6 @@ requests~=2.28.0
 nslsii
 tiled
 bluesky_kafka
+databroker==2.0.0b2
+git+https://github.com/maffettone/xca@inline_training#egg=xca
+botorch
