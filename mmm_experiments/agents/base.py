@@ -1,7 +1,7 @@
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Literal, Sequence, Union
+from typing import Literal, Sequence, Tuple, Union
 
 import databroker.client
 import nslsii
@@ -86,7 +86,7 @@ class Agent(ABC):
         ...
 
     @abstractmethod
-    def ask(self, batch_size: int):
+    def ask(self, batch_size: int) -> Tuple[dict, Sequence]:
         """
         Ask the agent for a new batch of points to measure.
 
@@ -97,7 +97,10 @@ class Agent(ABC):
 
         Returns
         -------
-        Set of independent variables of length batch size
+        doc : dict
+            key metadata from the ask approach
+        next_points : Sequence
+            Sequence of independent variables of length batch size
 
         """
         ...
@@ -151,11 +154,11 @@ class Agent(ABC):
         -------
 
         """
-        next_points = self.ask(batch_size)
+        doc, next_points = self.ask(batch_size)
         url = Path(self.server_host) / "api" / "queue" / "item" / "add"
         responses = {}
         for point in next_points:
-            data = dict(
+            doc, data = dict(
                 pos=self._add_position,
                 item=dict(
                     name=self.measurement_plan_name, args=self.measurement_plan_args(point), item_type="plan"
@@ -163,7 +166,8 @@ class Agent(ABC):
             )
             r = requests.post(str(url), data=data)
             responses[point] = r
-        return next_points, responses
+        # TODO: Should I be checking responses for anything?
+        return doc
 
     def _on_stop(self, name, doc):
         """Service that runs each time a stop document is seen."""
