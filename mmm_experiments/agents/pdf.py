@@ -30,6 +30,19 @@ class PDFAgent(Agent):
         device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         relative_bounds: Tuple[float, float],
     ):
+        """
+
+        Parameters
+        ----------
+        sample_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates
+        model_checkpoint : str, Path
+            Checkpoint path for models
+        device : str
+            Torch device to keep models. This is where both Deep and GP models will be stored.
+        relative_bounds : Tuple[float, float]
+            Relative bounds for the sample measurement. For a 10 cm sample, this would be something like (1, 99).
+        """
         super().__init__(beamline_tla="pdf")
         self.sample_origin = sample_origin
         self.checkpoint = torch.load(str(model_checkpoint))
@@ -54,6 +67,26 @@ class PDFAgent(Agent):
         return run.start["Grid_X"], run.primary.read()[DATA_KEY]
 
     def tell(self, position, intensity):
+        """
+        1. Get relative position from raw motor position.
+        2. From I(Q) intensity use a ensemble model to predict phase.
+        3. Retain the shannon entropy of that model as a proxy for novelty.
+        4. Use a complementary VAE to calculate reconstruction loss as a proxy for novelty.
+        5. The caches of the independent and these dependent variables are then appended.
+
+        A document with all key metadata is returned.
+
+        Parameters
+        ----------
+        position : float
+            Absolute motor position
+        intensity : array
+            Intensity from integrated I(Q)
+
+        Returns
+        -------
+
+        """
         rel_position = position - self.sample_origin[0]
         with torch.no_grad():
             x = torch.tensor(intensity, dtype=torch.float, device=self.device)
@@ -80,6 +113,24 @@ class PDFAgent(Agent):
         return doc
 
     def ask(self, batch_size=1):
+        """
+        Train a single task Gaussian process to predict reconstruction loss as a function of relative position.
+        Optimize over this GP using an upper confidence bound acquisition function to find the areas of "worst"
+        reconstruction, i.e. "most novelty".
+
+        Parameters
+        ----------
+        batch_size : int
+            Number of new points to measure
+
+        Returns
+        -------
+        doc : dict
+            key metadata from the ask approach
+        next_points : Sequence
+            Sequence of independent variables of length batch size
+
+        """
         train_x = torch.tensor(self.position_cache, dtype=torch.float).to(self.device)
         train_y = torch.tensor([y.reconstruction_loss for y in self.representation_cache], dtype=torch.float).to(
             self.device
