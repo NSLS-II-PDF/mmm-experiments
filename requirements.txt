@@ -1,1 +1,4 @@
 # List required packages in this file, one per line.
+
+setuptools~=60.9.3
+requests~=2.28.0

@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Union, Literal
-import requests
 from pathlib import Path
+from typing import Literal, Union
+
+import requests
 
 
 class Agent(ABC):
