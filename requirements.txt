@@ -2,3 +2,6 @@
 
 setuptools~=60.9.3
 requests~=2.28.0
+nslsii
+tiled
+bluesky_kafka

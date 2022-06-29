@@ -1,8 +1,12 @@
+import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Literal, Union
 
+import nslsii
 import requests
+from bluesky_kafka import RemoteDispatcher
+from tiled.client import from_profile
 
 
 class Agent(ABC):
@@ -10,6 +14,17 @@ class Agent(ABC):
     Single Plan Agent. These agents should consume data, decide where to measure next,
     and execute a single type of plan (maybe, move and count).
     """
+
+    def __init__(self, *, beamline_tla: str):
+        self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
+        self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
+        self.kafka_dispatcher = RemoteDispatcher(
+            topics=[f"{beamline_tla}.bluesky.runengine.documents"],
+            bootstrap_servers=",".join(self.kafka_config["bootstrap_servers"]),
+            group_id=self.kafka_group_id,
+            consumer_config=self.kafka_config["runengine_producer_config"],
+        )
+        self.catalog = from_profile(beamline_tla)
 
     @property
     @abstractmethod
@@ -29,6 +44,25 @@ class Agent(ABC):
     @abstractmethod
     def measurement_plan_args(self, *args) -> list:
         """List of arguments to pass to plan"""
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def process_run(run):
+        """
+        Consume a Bluesky run from tiled and emit the relevant x and y for the agent.
+
+        Parameters
+        ----------
+        run
+
+        Returns
+        -------
+        independent_var :
+            The independent variable of the measurement
+        dependent_var :
+            The measured data, processed for relevance
+        """
         ...
 
     @abstractmethod
@@ -70,6 +104,7 @@ class Agent(ABC):
         Create a report given the data observed by the agent.
         This could be potentially implemented in the base class to write document stream.
         """
+
         raise NotImplementedError
 
     def tell_many(self, xs, ys):
@@ -123,3 +158,19 @@ class Agent(ABC):
             r = requests.post(str(url), data=data)
             responses[point] = r
         return responses
+
+    def _on_stop(self, name, doc):
+        """Service that runs each time a stop document is seen."""
+        if name == "stop":
+            uid = doc["run_start"]
+            run = self.catalog[uid]
+            independent_variable, dependent_variable = self.process_run(run)
+            self.tell(independent_variable, dependent_variable)
+            self._add_to_queue(1)
+
+    def start(self):
+        self.kafka_dispatcher.subscribe(self._on_stop)
+        self.kafka_dispatcher.start()
+
+    def stop(self):
+        self.kafka_dispatcher.stop()
