@@ -16,7 +16,8 @@ Developer Instructions
 For the sanity of your friends and colleagues, please install
 pre-commit too keep your code black, flaked, and imports sorted.
 
-.. code-block::
+.. code-block:: bash
+
     git clone https://github.com/NSLS-II-PDF/mmm-experiments
     cd mmm-experiments
     python3 -m venv venv
