@@ -1,8 +1,9 @@
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal, Sequence, Union
 
+import databroker.client
 import nslsii
 import requests
 from bluesky_kafka import RemoteDispatcher
@@ -48,13 +49,13 @@ class Agent(ABC):
 
     @staticmethod
     @abstractmethod
-    def process_run(run):
+    def unpack_run(run: databroker.client.BlueskyRun):
         """
         Consume a Bluesky run from tiled and emit the relevant x and y for the agent.
 
         Parameters
         ----------
-        run
+        run : databroker.client.BlueskyRun
 
         Returns
         -------
@@ -66,7 +67,7 @@ class Agent(ABC):
         ...
 
     @abstractmethod
-    def tell(self, x, y):
+    def tell(self, x, y) -> dict:
         """
         Tell the agent about some new data
         Parameters
@@ -78,6 +79,8 @@ class Agent(ABC):
 
         Returns
         -------
+        dict
+            Dictionary to be unpacked or added to a document
 
         """
         ...
@@ -107,7 +110,7 @@ class Agent(ABC):
 
         raise NotImplementedError
 
-    def tell_many(self, xs, ys):
+    def tell_many(self, xs, ys) -> Sequence[dict]:
         """
         Tell the agent about some new data. It is likely that there is a more efficient approach to
         handling multiple observations for an agent. The default behavior is to iterate over all
@@ -122,10 +125,13 @@ class Agent(ABC):
 
         Returns
         -------
+        list_of_dict
 
         """
+        tell_emits = []
         for x, y in zip(xs, ys):
-            self.tell(x, y)
+            tell_emits.append(self.tell(x, y))
+        return tell_emits
 
     @property
     def _add_position(self) -> Union[int, Literal["front", "back"]]:
@@ -157,16 +163,18 @@ class Agent(ABC):
             )
             r = requests.post(str(url), data=data)
             responses[point] = r
-        return responses
+        return next_points, responses
 
     def _on_stop(self, name, doc):
         """Service that runs each time a stop document is seen."""
         if name == "stop":
             uid = doc["run_start"]
             run = self.catalog[uid]
-            independent_variable, dependent_variable = self.process_run(run)
-            self.tell(independent_variable, dependent_variable)
-            self._add_to_queue(1)
+            independent_variable, dependent_variable = self.unpack_run(run)
+            doc = self.tell(independent_variable, dependent_variable)
+            # TODO: publish tell doc
+            next_points, reponses = self._add_to_queue(1)
+            # TODO: publish ask doc from next points
 
     def start(self):
         self.kafka_dispatcher.subscribe(self._on_stop)
