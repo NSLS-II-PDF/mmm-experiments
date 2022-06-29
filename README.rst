@@ -11,6 +11,19 @@ Python package for running multimodal madness experiments with BMM
 * Free software: 3-clause BSD license
 * Documentation: (COMING SOON!) https://NSLS-II-PDF.github.io/mmm-experiments.
 
+Developer Instructions
+----------------------
+For the sanity of your friends and colleagues, please install
+pre-commit too keep your code black, flaked, and imports sorted.
+
+.. code-block:: bash
+    git clone https://github.com/NSLS-II-PDF/mmm-experiments
+    cd mmm-experiments
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements-dev.txt
+    pre-commit install
+
 
 Proposed Package Structure
 --------------------------
