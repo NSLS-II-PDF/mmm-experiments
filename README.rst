@@ -2,9 +2,6 @@
 mmm-experiments
 ===============
 
-.. image:: https://img.shields.io/travis/NSLS-II-PDF/mmm-experiments.svg
-        :target: https://travis-ci.org/NSLS-II-PDF/mmm-experiments
-
 .. image:: https://img.shields.io/pypi/v/mmm-experiments.svg
         :target: https://pypi.python.org/pypi/mmm-experiments
 
