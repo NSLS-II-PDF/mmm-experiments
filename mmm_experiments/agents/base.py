@@ -13,11 +13,16 @@ class Agent(ABC):
     @property
     @abstractmethod
     def server_host(self):
+        """
+        Host to POST requests to. Declare as property or as class level attribute.
+        Something akin to 'http://localhost:60610'
+        """
         ...
 
     @property
     @abstractmethod
     def measurement_plan_name(self) -> str:
+        """String name of registered plan"""
         ...
 
     @abstractmethod
@@ -62,6 +67,7 @@ class Agent(ABC):
     def report(self):
         """
         Create a report given the data observed by the agent.
+        This could be potentially implemented in the base class to write document stream.
         """
         raise NotImplementedError
 
@@ -115,4 +121,4 @@ class Agent(ABC):
             )
             r = requests.post(str(url), data=data)
             responses[point] = r
-        return r
+        return responses
