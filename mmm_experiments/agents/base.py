@@ -33,7 +33,7 @@ class Agent(ABC):
         logging.info(f"Reading data from catalog: {self.exp_catalog}")
         self.agent_catalog = from_profile(beamline_tla)["bluesky_sandbox"]
         logging.info(f"Writing data to catalog: {self.agent_catalog}")
-        self.metadata = {} if metadata is None else metadata
+        self.metadata = metadata or {}
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
         self.builder = None
