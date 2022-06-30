@@ -143,7 +143,7 @@ class DumbDistanceEXAFSAgent(Agent):
         # and M is the number of energy grid points
         abs_diff = np.abs(self.reference_spectra - intensity)
         summed_diff = abs_diff.sum(axis=1)
-        return summed_diff.min(summed_diff).item()
+        return np.min(summed_diff).item()
 
     def tell(self, position, intensity):
         """Takes the position of the motor and the measured intensity (which
