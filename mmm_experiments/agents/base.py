@@ -1,7 +1,7 @@
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Literal, Sequence, Tuple, Union
+from typing import Literal, Optional, Sequence, Tuple, Union
 
 import databroker.client
 import nslsii
@@ -17,7 +17,7 @@ class Agent(ABC):
     and execute a single type of plan (maybe, move and count).
     """
 
-    def __init__(self, *, beamline_tla: str, metadata={}):
+    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None):
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
         self.kafka_dispatcher = RemoteDispatcher(
@@ -26,9 +26,11 @@ class Agent(ABC):
             group_id=self.kafka_group_id,
             consumer_config=self.kafka_config["runengine_producer_config"],
         )
-        self.catalog = from_profile(beamline_tla)
-        self.metadata = metadata
+        self.exp_catalog = from_profile(beamline_tla)
+        self.agent_catalog = from_profile(beamline_tla)["bluesky_sandbox"]
+        self.metadata = {} if metadata is None else metadata
         self.metadata["beamline_tla"] = beamline_tla
+        self.metadata["kafka_group_id"] = self.kafka_group_id
         self.builder = None
 
     @property
@@ -141,7 +143,7 @@ class Agent(ABC):
         return tell_emits
 
     @property
-    def _add_position(self) -> Union[int, Literal["front", "back"]]:
+    def _queue_add_position(self) -> Union[int, Literal["front", "back"]]:
         return "back"
 
     def _add_to_queue(self, batch_size: int = 1):
@@ -163,7 +165,7 @@ class Agent(ABC):
         responses = {}
         for point in next_points:
             doc, data = dict(
-                pos=self._add_position,
+                pos=self._queue_add_position,
                 item=dict(
                     name=self.measurement_plan_name, args=self.measurement_plan_args(point), item_type="plan"
                 ),
@@ -173,23 +175,33 @@ class Agent(ABC):
         # TODO: Should I be checking responses for anything?
         return doc
 
-    def _on_stop(self, name, doc):
+    def _write_event(self, stream, doc):
+        """Add event to builder as event page, and publish to catalog"""
+        if stream in self.builder._streams:
+            self.builder.add_data(stream, data=doc)
+        else:
+            self.builder.add_stream(stream, data=doc)
+        self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
+
+    def _on_stop_router(self, name, doc):
         """Service that runs each time a stop document is seen."""
         if name == "stop":
             uid = doc["run_start"]
-            run = self.catalog[uid]
+            run = self.exp_catalog[uid]
             independent_variable, dependent_variable = self.unpack_run(run)
             doc = self.tell(independent_variable, dependent_variable)
-            # TODO: publish tell doc
-            next_points, reponses = self._add_to_queue(1)
-            # TODO: publish ask doc from next points
+            self._write_event("tell", doc)
+
+            doc = self._add_to_queue(1)
+            self._write_event("ask", doc)
 
     def start(self):
         self.builder = RunBuilder(metadata=self.metadata)
-        self.builder.add_stream("tell")
-        self.builder.add_stream("ask")
-        self.kafka_dispatcher.subscribe(self._on_stop)
+        self.agent_catalog.v1.insert("start", self.builder._cache.start_doc)
+        self.kafka_dispatcher.subscribe(self._on_stop_router)
         self.kafka_dispatcher.start()
 
-    def stop(self):
+    def stop(self, exit_status="success", reason=""):
+        self.builder.close(exit_status=exit_status, reason=reason)
+        self.agent_catalog.v1.insert("stop", self.builder._cache.stop_doc)
         self.kafka_dispatcher.stop()
