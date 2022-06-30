@@ -1,4 +1,6 @@
 import logging
+import signal
+import sys
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -18,7 +20,9 @@ class Agent(ABC):
     and execute a single type of plan (maybe, move and count).
     """
 
-    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None):
+    def __init__(
+        self, *, beamline_tla: str, metadata: Optional[dict] = None, restart_from_uid: Optional[str] = None
+    ):
         logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
@@ -37,6 +41,10 @@ class Agent(ABC):
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
         self.builder = None
+        if restart_from_uid:
+            self.restart(restart_from_uid)
+        else:
+            self.start()
 
     @property
     @abstractmethod
@@ -187,6 +195,7 @@ class Agent(ABC):
             self.builder.add_data(stream, data=doc)
         else:
             self.builder.add_stream(stream, data=doc)
+            self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
         self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
 
     def _on_stop_router(self, name, doc):
@@ -203,9 +212,11 @@ class Agent(ABC):
             # Tell
             logging.debug("Telling agent about some new data.")
             doc = self.tell(independent_variable, dependent_variable)
+            doc["exp_uid"] = uid
             self._write_event("tell", doc)
 
             # Ask
+            # TODO: Should this block be launched in an independent process to avoid blocking?
             logging.debug("Issuing ask and adding to the queue.")
             doc = self._add_to_queue(1)
             self._write_event("ask", doc)
@@ -218,6 +229,46 @@ class Agent(ABC):
         self.kafka_dispatcher.subscribe(self._on_stop_router)
         self.kafka_dispatcher.start()
 
+    def restart(self, uid):
+        """
+        Restart agent using all knowledge of a previous agent.
+        Right now this uses an iteration over all previously exposed data and singular `tell` methods
+        for two reasons:
+            1. If agent parameters change how `tell` operates, then the exposure should be fresh.
+            2. With current Tiled implementations, bulk loading has been buggy on analyzed data.
+                For this reason, `tell` is used instead of `tell_many`, and should be addressed
+                in future developments of agents.
+
+        Parameters
+        ----------
+        uid : str
+            Previous agent start document uid.
+        """
+        self.metadata["restarted_from_start"] = uid
+        run = self.agent_catalog[uid]
+        descriptors = {}  # {uid: "ask"/"tell"}
+        load_uids = []
+        for name, doc in run.documents():
+            if name == "descriptor":
+                descriptors[doc["uid"]] = doc["name"]
+            if name == "event_page":
+                if descriptors[doc["descriptor"]] == "tell":
+                    load_uids.extend(doc["uid"])
+
+        # Assemble all docs and knowledge first.
+        docs = []
+        for exp_uid in load_uids:
+            run = self.exp_catalog[exp_uid]
+            independent_variable, dependent_variable = self.unpack_run(run)
+            logging.debug("Telling agent about some new data.")
+            doc = self.tell(independent_variable, dependent_variable)
+            docs.append(doc)
+
+        # Then start and flush event docs while listening to kafka.
+        self.start()
+        for doc in docs:
+            self._write_event("tell", doc)
+
     def stop(self, exit_status="success", reason=""):
         logging.debug("Attempting agent stop.")
         self.builder.close(exit_status=exit_status, reason=reason)
@@ -227,3 +278,17 @@ class Agent(ABC):
             f"Stopped agent with exit status {exit_status.upper()}"
             f"{(' for reason: ' + reason) if reason else '.'}"
         )
+
+    def signal_handler(self, signal, frame):
+        self.stop(exit_status="abort", reason="forced exit ctrl+c")
+        sys.exit(0)
+
+
+def example_run():
+    """Example function for running an agent."""
+    try:
+        agent = Agent(beamline_tla="tla")
+        signal.signal(signal.SIGINT, agent.signal_handler)
+    except Exception as e:
+        agent.stop(exit_status="fail", reason=f"{e}")
+        raise e

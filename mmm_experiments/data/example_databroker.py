@@ -97,10 +97,10 @@ if __name__ == "__main__":
     import signal
     import sys
 
-    # Run an agent that still closes out the data stream on bad exit.
-    agent = DummyAgent()
-    signal.signal(signal.SIGINT, agent.signal_handler)
     try:
+        # Run an agent that still closes out the data stream on bad exit.
+        agent = DummyAgent()
+        signal.signal(signal.SIGINT, agent.signal_handler)
         agent.start()
         agent.spin()
         agent.stop()
