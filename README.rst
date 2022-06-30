@@ -49,3 +49,34 @@ Features
 --------
 
 * TODO
+
+Running with a local mongo
+--------------------------
+- Following instructions here: https://www.mongodb.com/compatibility/docker
+- `data/testing_config.yml` goes in `~/.config/tiled/profiles` or `./venv/etc/tiled/profiles`
+
+In terminal:
+
+.. code-block:: bash
+
+    docker run --name mongodb -d -v /tmp/databroker:/data/db -p 27017:27017 mongo
+
+
+Checking in python:
+
+.. code-block:: python
+
+    from tiled.client import from_profile
+    from tiled.profiles import list_profiles
+    from event_model import compose_run
+    list_profiles()
+    catalog = from_profile("testing_sandbox")
+    run_bundle = compose_run(uid=None, time=None, metadata=None)
+    catalog.v1.insert("start", run_bundle.start_doc)
+    uid = run_bundle.start_doc["uid"]
+    catalog["uid"]
+    # Should output something like <BlueskyRun set() scan_id=UNSET uid='6201900e' 2022-06-30 12:49>
+
+
+With mongo db live in docker, the `data/example_data.py` script will show how to write into the
+database with some dummy data.

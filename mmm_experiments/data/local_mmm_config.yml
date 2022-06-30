@@ -1,0 +1,20 @@
+# ~/.config/tiled/profiles/mmm.yml
+bmm_bluesky_sandbox:
+  direct:
+    authentication:
+      allow_anonymous_access: true
+    trees:
+      - tree: databroker.mongo_normalized:Tree.from_uri
+        path: /
+        args:
+          uri: mongodb://databroker.bmm.nsls2.bnl.local/bluesky_sandbox
+
+pdf_bluesky_sandbox:
+  direct:
+    authentication:
+      allow_anonymous_access: true
+    trees:
+      - tree: databroker.mongo_normalized:Tree.from_uri
+        path: /
+        args:
+          uri: mongodb://databroker.pdf.nsls2.bnl.local/bluesky_sandbox
