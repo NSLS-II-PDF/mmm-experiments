@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Literal, Tuple, Union
 
 import torch
-from botorch.acquisition import UpperConfidenceBound
+from botorch.acquisition import UpperConfidenceBound, qUpperConfidenceBound
 from botorch.fit import fit_gpytorch_model
 from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
@@ -29,6 +29,7 @@ class PDFAgent(Agent):
         model_checkpoint: Union[str, Path],
         device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         relative_bounds: Tuple[float, float],
+        ucb_beta=0.1,
     ):
         """
 
@@ -42,6 +43,8 @@ class PDFAgent(Agent):
             Torch device to keep models. This is where both Deep and GP models will be stored.
         relative_bounds : Tuple[float, float]
             Relative bounds for the sample measurement. For a 10 cm sample, this would be something like (1, 99).
+        ucb_beta : float
+            Value for exporative weighting in upper confidence bound acquisition function
         """
         super().__init__(beamline_tla="pdf")
         self.sample_origin = sample_origin
@@ -55,6 +58,7 @@ class PDFAgent(Agent):
         self.reconstruction_loss = torch.nn.MSELoss()
         self.position_cache = []
         self.representation_cache = []
+        self.beta = ucb_beta
 
     def measurement_plan_args(self, x_position) -> list:
         """Plan to be writen than moves to an x_position then jogs up and down relatively in y"""
@@ -138,7 +142,10 @@ class PDFAgent(Agent):
         gp = SingleTaskGP(train_x, train_y).to(self.device)
         mll = ExactMarginalLogLikelihood(gp.likelihood, gp).to(self.device)
         fit_gpytorch_model(mll)
-        ucb = UpperConfidenceBound(gp, beta=0.1)
+        if batch_size == 1:
+            ucb = UpperConfidenceBound(gp, beta=self.beta)
+        else:
+            ucb = qUpperConfidenceBound(gp, beta=self.beta)
         next_points, acq_value = optimize_acqf(
             ucb,
             bounds=self.bounds,
@@ -154,6 +161,7 @@ class PDFAgent(Agent):
         doc = dict(
             batch_size=batch_size,
             next_points=next_points,
+            ucb_beta=self.beta,
             acq_value=[float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))],
         )
         return doc, next_points
