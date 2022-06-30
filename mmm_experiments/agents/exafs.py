@@ -70,7 +70,7 @@ class DumbDistanceEXAFSAgent(Agent):
                 "of floats"
             )
 
-        super().__init__(beamline_tla="exafs")  # <- is this correct? TODO
+        super().__init__(beamline_tla="bmm") 
 
         self.sample_origin = sample_origin
         self.device = torch.device(device)
