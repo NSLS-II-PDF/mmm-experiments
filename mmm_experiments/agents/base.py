@@ -1,3 +1,4 @@
+import logging
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -18,6 +19,7 @@ class Agent(ABC):
     """
 
     def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None):
+        logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
         self.kafka_dispatcher = RemoteDispatcher(
@@ -26,8 +28,11 @@ class Agent(ABC):
             group_id=self.kafka_group_id,
             consumer_config=self.kafka_config["runengine_producer_config"],
         )
+        logging.debug("Kafka setup sucessfully.")
         self.exp_catalog = from_profile(beamline_tla)
+        logging.info(f"Reading data from catalog: {self.exp_catalog}")
         self.agent_catalog = from_profile(beamline_tla)["bluesky_sandbox"]
+        logging.info(f"Writing data to catalog: {self.agent_catalog}")
         self.metadata = {} if metadata is None else metadata
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
@@ -172,6 +177,7 @@ class Agent(ABC):
             )
             r = requests.post(str(url), data=data)
             responses[point] = r
+            logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
         # TODO: Should I be checking responses for anything?
         return doc
 
@@ -187,21 +193,37 @@ class Agent(ABC):
         """Service that runs each time a stop document is seen."""
         if name == "stop":
             uid = doc["run_start"]
+            logging.info(
+                f"New data detected, telling the agent about this start doc "
+                f"and asking for a new suggestion: {uid}"
+            )
             run = self.exp_catalog[uid]
             independent_variable, dependent_variable = self.unpack_run(run)
+
+            # Tell
+            logging.debug("Telling agent about some new data.")
             doc = self.tell(independent_variable, dependent_variable)
             self._write_event("tell", doc)
 
+            # Ask
+            logging.debug("Issuing ask and adding to the queue.")
             doc = self._add_to_queue(1)
             self._write_event("ask", doc)
 
     def start(self):
+        logging.debug("Issuing start document and start listening to Kafka")
         self.builder = RunBuilder(metadata=self.metadata)
         self.agent_catalog.v1.insert("start", self.builder._cache.start_doc)
+        logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
         self.kafka_dispatcher.subscribe(self._on_stop_router)
         self.kafka_dispatcher.start()
 
     def stop(self, exit_status="success", reason=""):
+        logging.debug("Attempting agent stop.")
         self.builder.close(exit_status=exit_status, reason=reason)
         self.agent_catalog.v1.insert("stop", self.builder._cache.stop_doc)
         self.kafka_dispatcher.stop()
+        logging.info(
+            f"Stopped agent with exit status {exit_status.upper()}"
+            f"{(' for reason: ' + reason) if reason else '.'}"
+        )
