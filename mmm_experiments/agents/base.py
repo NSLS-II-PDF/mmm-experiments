@@ -7,6 +7,7 @@ import databroker.client
 import nslsii
 import requests
 from bluesky_kafka import RemoteDispatcher
+from bluesky_live.run_builder import RunBuilder
 from tiled.client import from_profile
 
 
@@ -16,7 +17,7 @@ class Agent(ABC):
     and execute a single type of plan (maybe, move and count).
     """
 
-    def __init__(self, *, beamline_tla: str):
+    def __init__(self, *, beamline_tla: str, metadata={}):
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
         self.kafka_dispatcher = RemoteDispatcher(
@@ -26,6 +27,9 @@ class Agent(ABC):
             consumer_config=self.kafka_config["runengine_producer_config"],
         )
         self.catalog = from_profile(beamline_tla)
+        self.metadata = metadata
+        self.metadata["beamline_tla"] = beamline_tla
+        self.builder = None
 
     @property
     @abstractmethod
@@ -181,6 +185,9 @@ class Agent(ABC):
             # TODO: publish ask doc from next points
 
     def start(self):
+        self.builder = RunBuilder(metadata=self.metadata)
+        self.builder.add_stream("tell")
+        self.builder.add_stream("ask")
         self.kafka_dispatcher.subscribe(self._on_stop)
         self.kafka_dispatcher.start()
 
