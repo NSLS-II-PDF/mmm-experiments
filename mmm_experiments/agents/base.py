@@ -62,8 +62,13 @@ class Agent(ABC):
         ...
 
     @abstractmethod
-    def measurement_plan_args(self, *args) -> list:
-        """List of arguments to pass to plan"""
+    def measurement_plan_args(self, point) -> list:
+        """List of arguments to pass to plan from a point to measure."""
+        ...
+
+    @abstractmethod
+    def measurement_plan_kwargs(self, point) -> dict:
+        """Construct dictionary of keyword arguments to pass the plan, from a point to measure."""
         ...
 
     @staticmethod
@@ -180,13 +185,17 @@ class Agent(ABC):
             doc, data = dict(
                 pos=self._queue_add_position,
                 item=dict(
-                    name=self.measurement_plan_name, args=self.measurement_plan_args(point), item_type="plan"
+                    name=self.measurement_plan_name,
+                    args=self.measurement_plan_args(point),
+                    item_type="plan",
+                    kwargs=self.measurement_plan_kwargs(point),
                 ),
             )
             r = requests.post(str(url), data=data)
             responses[point] = r
             logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
         # TODO: Should I be checking responses for anything?
+        #  (Continue on 200, crash on anything else. Probably sensible stuff in requests package.)
         return doc
 
     def _write_event(self, stream, doc):
@@ -216,7 +225,6 @@ class Agent(ABC):
             self._write_event("tell", doc)
 
             # Ask
-            # TODO: Should this block be launched in an independent process to avoid blocking?
             logging.debug("Issuing ask and adding to the queue.")
             doc = self._add_to_queue(1)
             self._write_event("ask", doc)
