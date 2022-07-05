@@ -1,5 +1,6 @@
 import argparse
 import pprint
+from tiled.client import from_profile
 
 from bluesky.callbacks.zmq import RemoteDispatcher
 
@@ -48,6 +49,10 @@ def start(zmq_address, zmq_prefix, beamline, document_source):
     rd = RemoteDispatcher(zmq_address, prefix=zmq_prefix.encode("ascii"))
     # subscribes inside, this pushes the documets to kafka
     configure_kafka_publisher(rd, beamline, document_source=document_source)
+    # get the document-aware sandbox
+    cat = from_profile('nsls2')[beamline]['bluesky_sandbox']
+    # subscribe to insert the reduced data as well
+    rd.subscribe(cat.v1.insert)
     # start the dispatcher
     rd.start()
 
