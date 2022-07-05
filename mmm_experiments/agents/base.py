@@ -300,3 +300,38 @@ def example_run():
     except Exception as e:
         agent.stop(exit_status="fail", reason=f"{e}")
         raise e
+
+
+class DrowsyAgent(Agent):
+    """
+    It's an agent that just lounges around all day.
+    Alternates sending args vs kwargs to do the same thing.
+    """
+
+    server_host = "qserver1.nslsl2.bnl.gov:60611"
+    measurement_plan_name = "agent_driven_nap"
+
+    def __init__(self, *, beamline_tla: str):
+        super().__init__(beamline_tla=beamline_tla)
+        self.counter = 0
+
+    def measurement_plan_kwargs(self, point) -> dict:
+        if self.counter % 2 == 0:
+            return dict(delay_kwarg=1)
+        else:
+            return {}
+
+    def measurement_plan_args(self, point) -> list:
+        if self.counter % 2 == 0:
+            return []
+        else:
+            return [1]
+
+    def unpack_run(run: databroker.client.BlueskyRun):
+        return 0.0, 0.0
+
+    def tell(self, x, y) -> dict:
+        return dict(x=x, y=y)
+
+    def ask(self, batch_size: int) -> Tuple[dict, Sequence]:
+        return dict(batch_size=batch_size), [0.0]
