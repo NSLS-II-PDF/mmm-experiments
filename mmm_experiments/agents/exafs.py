@@ -1,21 +1,15 @@
-from collections import namedtuple
-from pathlib import Path
-from typing import Literal, Tuple, Union
-
-
+import numpy as np
+import torch
 from botorch.acquisition import UpperConfidenceBound
 from botorch.acquisition.monte_carlo import qUpperConfidenceBound
 from botorch.fit import fit_gpytorch_model
 from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
-from databroker.client import BlueskyRun
 from gpytorch.mlls import ExactMarginalLogLikelihood
-import numpy as np
-import torch
 
 from .base import Agent
 
-DATA_KEY = None  # TODO
+DATA_KEY = None  # ODO
 
 
 class DumbDistanceEXAFSAgent(Agent):
@@ -65,12 +59,9 @@ class DumbDistanceEXAFSAgent(Agent):
             raise ValueError(f"device={device} must be one of {AVAIL_DEVICES}")
 
         if len(relative_bounds) != 2:
-            raise ValueError(
-                f"relative_bounds={relative_bounds} must be a length-2 tuple "
-                "of floats"
-            )
+            raise ValueError(f"relative_bounds={relative_bounds} must be a length-2 tuple " "of floats")
 
-        super().__init__(beamline_tla="bmm") 
+        super().__init__(beamline_tla="bmm")
 
         self.sample_origin = sample_origin
         self.device = torch.device(device)
@@ -105,6 +96,9 @@ class DumbDistanceEXAFSAgent(Agent):
         """List of arguments to pass to plan"""
 
         raise NotImplementedError
+
+    def measurement_plan_kwargs(self, point) -> dict:
+        return {}
 
     @staticmethod
     def unpack_run(run):
@@ -178,12 +172,7 @@ class DumbDistanceEXAFSAgent(Agent):
             intensity=intensity,
         )
 
-    def ask(
-        self,
-        batch_size=1,
-        ucb_kwargs=dict(),
-        optimize_acqf_kwargs={"num_restarts": 5, "raw_samples": 20}
-    ):
+    def ask(self, batch_size=1, ucb_kwargs=dict(), optimize_acqf_kwargs={"num_restarts": 5, "raw_samples": 20}):
         """Trains a single task Gaussian process to predict the distance to the
         nearest reference spectrum as a function of relative position. Optimize
         over this GP using an upper confidence bound acquisition function to
@@ -238,7 +227,6 @@ class DumbDistanceEXAFSAgent(Agent):
         doc = dict(
             batch_size=batch_size,
             next_points=next_points,
-            acq_value=[float(x.to("cpu")) for x in acq_value]
-            if batch_size > 1 else [float(acq_value.to("cpu"))],
+            acq_value=[float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))],
         )
         return doc, next_points
