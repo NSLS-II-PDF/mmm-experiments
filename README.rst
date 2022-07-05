@@ -107,11 +107,11 @@ Adding a new plan
 In :code:`/nsls2/data/TLA/shared/config/bluesky/profile_collection/startup`, adjust :code:`user_group_permissions.yaml`
 to include :code:`':^agent_'` in user_groups:root:allowed_plans.
 
-`qserver allowed plans` should show this.
+`qserver permissions get` should show this.
 
 Adding a plan to a start up file (like :code:`def agent_test_plan()` in :code:`99-agent_plans.py`),
 then closing the qserver environment, and updating :code:`existing_plans_and_devices.yaml` using  the CLI
-will make the plan available.
+will make the plan available. The following commands as the operator account should update the accesible plans.
 
 .. code-block:: bash
 
@@ -120,7 +120,13 @@ will make the plan available.
     qserver environment close
     qserver status
     qserver-list-plans-devices --startup-dir . # updates existing_plans_and_devices.yaml
+    # Check exiting plans
+    qserver existing plans
     qserver environment open
     qserver status
     # waiting for  'worker_environment_exists': True, 'worker_environment_state': 'idle'}
+    # The following line is sometimes necessary...
+    qserver permissions reload
+    # Check the new plan is allowed
+    qserver allowed plans
 
