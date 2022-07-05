@@ -96,17 +96,21 @@ On srv1 to launch and perform simple work. The RE manager is launched by systemd
     qserver environment close
 
 
+Some example tests using the API are shown here:
+https://gist.github.com/dmgav/87dc6c2f7b0bb5775afb5e1277176850
+
+
 =================
 Adding a new plan
 =================
 
-In `/nsls2/data/TLA/shared/config/bluesky/profile_collection/startup`, adjust `user_group_permissions.yaml`
-to include `':^agent_'` in user_groups:root:allowed_plans.
+In :code:`/nsls2/data/TLA/shared/config/bluesky/profile_collection/startup`, adjust :code:`user_group_permissions.yaml`
+to include :code:`':^agent_'` in user_groups:root:allowed_plans.
 
 `qserver allowed plans` should show this.
 
-Adding a plan to a start up file (like `def agent_test_plan()` in `99-agent_plans.py`),
-then closing the qserver environment, and updating `existing_plans_and_devices.yaml` using  the CLI
+Adding a plan to a start up file (like :code:`def agent_test_plan()` in :code:`99-agent_plans.py`),
+then closing the qserver environment, and updating :code:`existing_plans_and_devices.yaml` using  the CLI
 will make the plan available.
 
 .. code-block:: bash
