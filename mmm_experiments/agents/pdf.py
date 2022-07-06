@@ -2,6 +2,7 @@ from collections import namedtuple
 from pathlib import Path
 from typing import Literal, Tuple, Union
 
+import numpy as np
 import torch
 from botorch.acquisition import UpperConfidenceBound, qUpperConfidenceBound
 from botorch.fit import fit_gpytorch_model
@@ -15,8 +16,6 @@ from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
 
 from .base import Agent, DrowsyAgent
 
-DATA_KEY = "pe1c_image"  # TODO: Change in accordance with analysis broker
-
 Representation = namedtuple("Representation", "probabilities shannon_entropy reconstruction_loss")
 
 
@@ -26,12 +25,14 @@ class DrowsyPDFAgent(DrowsyAgent):
     Alternates sending args vs kwargs to do the same thing.
     """
 
-    server_host = "http://qserver1.nslsl2.bnl.gov:60611"
+    server_host = "https://qserver.nslsl2.bnl.gov/pdf"
+    api_key = "yyyyy"
 
 
 class PDFAgent(Agent):
-    server_host = "http://qserver1.nslsl2.bnl.gov:60611"
+    server_host = "https://qserver.nslsl2.bnl.gov/pdf"
     measurement_plan_name = "mv_and_jog"  # This plan does not exist yet
+    api_key = "yyyyy"
 
     def __init__(
         self,
@@ -81,8 +82,9 @@ class PDFAgent(Agent):
     @staticmethod
     def unpack_run(run: BlueskyRun):
         """"""
-        # TODO: Review and revise as correct plan and md is written
-        return run.start["Grid_X"], run.primary.read()[DATA_KEY]
+        # x = np.array(run.primary.data["chi_2theta"][0])
+        y = np.array(run.primary.data["chi_I"][0])
+        return run.start["Grid_X"], y
 
     def tell(self, position, intensity):
         """

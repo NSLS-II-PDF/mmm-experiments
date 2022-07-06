@@ -51,12 +51,12 @@ class BMMAgent(Agent, ABC):
 
     @staticmethod
     def unpack_run(run: databroker.client.BlueskyRun):
+        """Gets Chi(k) and absolute position"""
         run_preprocessor = Pandrosus()
         run_preprocessor.fetch(run, mode="fluorescence")
         # x_data = run_preprocessor.group.k
         y_data = run_preprocessor.group.chi
-        relative_position = run.start["X"]
-        return relative_position, y_data
+        return run.start["Cu_position"], y_data
 
     def measurement_plan_args(self, point):
         """List of arguments to pass to plan"""
@@ -181,7 +181,7 @@ class DumbDistanceEXAFSAgent(BMMAgent):
     def tell(self, position, intensity):
         """Takes the position of the motor and the measured intensity (which
         is assumed to be on a standardized grid) and returns a dictionary
-        of documentation (?? TODO).
+        of documentation
 
         Parameters
         ----------
@@ -195,7 +195,7 @@ class DumbDistanceEXAFSAgent(BMMAgent):
         dict
         """
 
-        relative_position = position - self.sample_origin
+        relative_position = position - self.Cu_origin
         self.relative_position_cache.append(relative_position)
         intensity = np.array(intensity)
         self.exafs_cache.append(intensity)
@@ -204,7 +204,6 @@ class DumbDistanceEXAFSAgent(BMMAgent):
         new_distance = self._get_distances_from_reference_spectra(intensity)
         self.target_cache.append(new_distance)
 
-        # Doc? TODO (what is this for?)
         return dict(
             position=position,
             rel_position=relative_position,
