@@ -26,7 +26,11 @@ class DrowsyBMMAgent(DrowsyAgent):
 
 
 class BMMAgent(Agent, ABC):
-    """Abstract Agent containing communication and data defaults for BMM"""
+    """
+    Abstract Agent containing communication and data defaults for BMM
+    While the BMM experiment will measure both the Cu and Ti edge.
+    The agent will by default only consider the data from the Cu K-edge measurement.
+    """
 
     server_host = "https://qserver.nslsl2.bnl.gov/bmm"
     measurement_plan_name = "agent_move_and_measure"
@@ -72,12 +76,15 @@ class BMMAgent(Agent, ABC):
             start="next",
             mode="fluorescence",
             edge="K",
-            sample="CuPt",
+            sample="CuTi",
             preparation="film sputtered on silica",
             bounds="-200 -30 -10 25 12k",
             steps="10 2 0.3 0.05k",
             times="0.5 0.5 0.5 0.5",
         )
+
+    def trigger_condition(self, uid) -> bool:
+        return self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
 
 
 class DumbDistanceEXAFSAgent(BMMAgent):

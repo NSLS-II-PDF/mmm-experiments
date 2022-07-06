@@ -14,6 +14,10 @@ from bluesky_queueserver_api.http import REManagerAPI
 from tiled.client import from_profile
 
 
+def _alt_condition(uid):
+    return True
+
+
 class Agent(ABC):
     """
     Single Plan Agent. These agents should consume data, decide where to measure next,
@@ -217,10 +221,21 @@ class Agent(ABC):
             self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
         self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
 
+    @staticmethod
+    def trigger_condition(uid) -> bool:
+        return True
+
     def _on_stop_router(self, name, doc):
         """Service that runs each time a stop document is seen."""
         if name == "stop":
             uid = doc["run_start"]
+            if not self.trigger_condition(uid):
+                logging.debug(
+                    f"New data detected, but trigger condition not met. "
+                    f"The agent will ignore this start doc: {uid}"
+                )
+                return
+
             logging.info(
                 f"New data detected, telling the agent about this start doc "
                 f"and asking for a new suggestion: {uid}"

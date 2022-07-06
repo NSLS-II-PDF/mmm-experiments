@@ -1,6 +1,8 @@
+import bluesky.preprocessors as bpp
 from bluesky import plan_stubs as bps
 
 
+@bpp.run_decorator(md={})
 def agent_driven_nap(delay: float, *, delay_kwarg: float = 0):
     """Ensuring we can auto add 'agent_' plans and use args/kwargs"""
     if delay_kwarg:
@@ -64,14 +66,14 @@ def agent_move_and_measure(motor, Cu_position, Ti_position, *, Cu_det_position, 
             >>> 'steps': '10 2 0.3 0.05k',
             >>> 'times': '0.5 0.5 0.5 0.5'}
     """
-    bps.mv(motor, Cu_position)
-    bps.mv(xafs_det, Cu_det_position)
-    change_edge(["Cu"], focus=True)
-    xafs(element="Cu", **kwargs)
-    bps.mv(motor, Ti_position)
-    bps.mv(xafs_det, Ti_det_position)
-    change_edge(["Ti"], focus=True)
-    xafs(element="Ti", **kwargs)
+    yield from bps.mv(motor, Cu_position)
+    yield from bps.mv(xafs_det, Cu_det_position)
+    yield from change_edge(["Cu"], focus=True)
+    yield from xafs(element="Cu", **kwargs)
+    yield from bps.mv(motor, Ti_position)
+    yield from bps.mv(xafs_det, Ti_det_position)
+    yield from change_edge(["Ti"], focus=True)
+    yield from xafs(element="Ti", **kwargs)
 
 
 # ================================== BBB SPECIFIC PLANS =================================== #

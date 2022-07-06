@@ -128,9 +128,11 @@ will make the plan available. The following commands as the operator account sho
 
 
 Dealing with PDF Analyzed data
-==============================
+------------------------------
+
 To start the zmq -> kafka / mongo bridge
 :code: `python -m mmm_experiments.data.zmq_bridge`
 in an env where the package is installed.
 This will publish to the topic pdf.bluesky.pdfstream.documents and insert into the pdf_bluesky_sandbox databroker.
 To work this strips out the two images from the pdfstream data stream.
+
