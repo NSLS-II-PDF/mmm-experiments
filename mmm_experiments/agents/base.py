@@ -27,7 +27,9 @@ class Agent(ABC):
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
         self.kafka_dispatcher = RemoteDispatcher(
-            topics=[f"{beamline_tla}.bluesky.runengine.documents"],
+            topics=[f"{beamline_tla}.bluesky.pdfstream.documents"]
+            if beamline_tla == "pdf"
+            else [f"{beamline_tla}.bluesky.runengine.documents"],  # PDF will attend to analyized data
             bootstrap_servers=",".join(self.kafka_config["bootstrap_servers"]),
             group_id=self.kafka_group_id,
             consumer_config=self.kafka_config["runengine_producer_config"],
