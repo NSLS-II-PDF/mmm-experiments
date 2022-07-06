@@ -9,6 +9,7 @@ from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
 from databroker.client import BlueskyRun
 from gpytorch.mlls import ExactMarginalLogLikelihood
+from tiled.client import from_profile
 from xca.ml.torch.cnn import EnsembleCNN
 from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
 
@@ -25,11 +26,11 @@ class DrowsyPDFAgent(DrowsyAgent):
     Alternates sending args vs kwargs to do the same thing.
     """
 
-    server_host = "qserver1.nslsl2.bnl.gov:60611"
+    server_host = "http://qserver1.nslsl2.bnl.gov:60611"
 
 
 class PDFAgent(Agent):
-    server_host = "qserver1.nslsl2.bnl.gov:60611"
+    server_host = "http://qserver1.nslsl2.bnl.gov:60611"
     measurement_plan_name = "mv_and_jog"  # This plan does not exist yet
 
     def __init__(
@@ -56,6 +57,7 @@ class PDFAgent(Agent):
             Value for exporative weighting in upper confidence bound acquisition function
         """
         super().__init__(beamline_tla="pdf")
+        self.exp_catalog = from_profile("nsls2")["pdf"]["bluesky_sandbox"]
         self.sample_origin = sample_origin
         self.checkpoint = torch.load(str(model_checkpoint))
         self.device = torch.device(device)
