@@ -1,6 +1,5 @@
 # List required packages in this file, one per line.
 
-setuptools~=60.9.3
 requests~=2.28.0
 nslsii
 tiled[all]
@@ -8,3 +7,5 @@ bluesky_kafka
 databroker==2.0.0b2
 git+https://github.com/maffettone/xca@inline_training#egg=xca
 botorch
+xraylarch
+bluesky-queueserver-api

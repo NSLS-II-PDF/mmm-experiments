@@ -206,8 +206,6 @@ class Agent(ABC):
             )
             r = self.re_manager.item_add(plan, pos=self._queue_add_position)
             logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
-        # TODO: Should I be checking responses for anything?
-        #  (Continue on 200, crash on anything else. Probably sensible stuff in requests package.)
         return doc
 
     def _write_event(self, stream, doc):
@@ -314,13 +312,12 @@ def example_run():
         raise e
 
 
-class DrowsyAgent(Agent):
+class DrowsyAgent(Agent, ABC):
     """
     It's an agent that just lounges around all day.
     Alternates sending args vs kwargs to do the same thing.
     """
 
-    server_host = "qserver1.nslsl2.bnl.gov:60611"
     measurement_plan_name = "agent_driven_nap"
 
     def __init__(self, *, beamline_tla: str):
