@@ -13,6 +13,20 @@ def agent_driven_nap(delay: float, *, delay_kwarg: float = 0):
 
 # ================================== PDF SPECIFIC PLANS =================================== #
 # ==================================  99-demo_plans.py  =================================== #
+def simple_ct(*args, **kwargs):
+    ...
+
+
+pe1c = ...
+Grid_X = ...
+
+
+def agent_sample_count(position: float, exposure: float, *, md=None):
+    yield from bps.mv(Grid_X, position)
+    _md = dict(Grid_X=Grid_X.read())
+    _md.update(md or {})
+    yield from simple_ct([pe1c], exposure, md=_md)
+
 
 # ================================== PDF SPECIFIC PLANS =================================== #
 # ==================================  99-demo_plans.py  =================================== #
@@ -33,7 +47,9 @@ def change_edge(*args, **kwargs):
 xafs_det = ...
 
 
-def agent_move_and_measure(motor, Cu_position, Ti_position, *, Cu_det_position, Ti_det_position, **kwargs):
+def agent_move_and_measure(
+    motor, Cu_position, Ti_position, *, Cu_det_position, Ti_det_position, md=None, **kwargs
+):
     """
     A complete XAFS measurement for the Cu/Ti sample.
     Each element edge must have it's own calibrated motor positioning and detector distance.
@@ -51,6 +67,8 @@ def agent_move_and_measure(motor, Cu_position, Ti_position, *, Cu_det_position, 
         Absolute motor position for the xafs detector for the Cu measurement.
     Ti_det_position : float
         Absolute motor position for the xafs detector for the Ti measurement.
+    md : Optional[dict]
+        Metadata
     kwargs :
         All keyword arguments for the xafs plan. Must include  'filename'. Eg below:
             >>> {'filename': 'Cu_PdCuCr_112421_001',
@@ -67,13 +85,19 @@ def agent_move_and_measure(motor, Cu_position, Ti_position, *, Cu_det_position, 
             >>> 'times': '0.5 0.5 0.5 0.5'}
     """
     yield from bps.mv(motor, Cu_position)
+    _md = dict(Cu_position=motor.read())
     yield from bps.mv(xafs_det, Cu_det_position)
+    _md["Cu_det_position"] = xafs_det.read()  # TODO: update to correct key
+    _md.update(md or {})
     yield from change_edge(["Cu"], focus=True)
-    yield from xafs(element="Cu", **kwargs)
+    yield from xafs(element="Cu", md=_md, **kwargs)
     yield from bps.mv(motor, Ti_position)
+    _md = dict(Ti_position=motor.read())
     yield from bps.mv(xafs_det, Ti_det_position)
+    _md["Ti_det_position"] = xafs_det.read()  # TODO: update to correct key
+    _md.update(md or {})
     yield from change_edge(["Ti"], focus=True)
-    yield from xafs(element="Ti", **kwargs)
+    yield from xafs(element="Ti", md=_md, **kwargs)
 
 
 # ================================== BBB SPECIFIC PLANS =================================== #
