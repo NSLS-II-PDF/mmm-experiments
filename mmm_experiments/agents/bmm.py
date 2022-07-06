@@ -14,8 +14,6 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 from ..data.bmm_utils import Pandrosus
 from .base import Agent, DrowsyAgent
 
-DATA_KEY = None  # ODO
-
 
 class DrowsyBMMAgent(DrowsyAgent):
     """
