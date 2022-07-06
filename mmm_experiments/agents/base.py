@@ -337,3 +337,6 @@ class DrowsyAgent(Agent):
 
     def ask(self, batch_size: int) -> Tuple[dict, Sequence]:
         return dict(batch_size=batch_size), [0.0]
+
+    def report(self):
+        pass
