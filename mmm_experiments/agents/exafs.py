@@ -7,9 +7,18 @@ from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
 from gpytorch.mlls import ExactMarginalLogLikelihood
 
-from .base import Agent
+from .base import Agent, DrowsyAgent
 
 DATA_KEY = None  # ODO
+
+
+class DrowsyBMMAgent(DrowsyAgent):
+    """
+    It's an agent that just lounges around all day.
+    Alternates sending args vs kwargs to do the same thing.
+    """
+
+    server_host = "qserver1.nslsl2.bnl.gov:60610"
 
 
 class DumbDistanceEXAFSAgent(Agent):
@@ -22,7 +31,7 @@ class DumbDistanceEXAFSAgent(Agent):
     Multiple references can be provided, and the distance considered will be
     the minimum distance for any of the references."""
 
-    server_host = None  # TODO "qserver1.nsls2.bnl.gov:60610"
+    server_host = "qserver1.nslsl2.bnl.gov:60610"
     measurement_plan_name = None  # TODO ? "mv_and_jog"
 
     def __init__(

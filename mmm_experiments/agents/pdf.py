@@ -12,15 +12,24 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 from xca.ml.torch.cnn import EnsembleCNN
 from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
 
-from .base import Agent
+from .base import Agent, DrowsyAgent
 
 DATA_KEY = "pe1c_image"  # TODO: Change in accordance with analysis broker
 
 Representation = namedtuple("Representation", "probabilities shannon_entropy reconstruction_loss")
 
 
+class DrowsyPDFAgent(DrowsyAgent):
+    """
+    It's an agent that just lounges around all day.
+    Alternates sending args vs kwargs to do the same thing.
+    """
+
+    server_host = "qserver1.nslsl2.bnl.gov:60611"
+
+
 class PDFAgent(Agent):
-    server_host = "qserver1.nsls2.bnl.gov:60610"
+    server_host = "qserver1.nslsl2.bnl.gov:60611"
     measurement_plan_name = "mv_and_jog"  # This plan does not exist yet
 
     def __init__(
