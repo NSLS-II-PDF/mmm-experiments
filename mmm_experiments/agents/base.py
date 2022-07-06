@@ -3,14 +3,14 @@ import signal
 import sys
 import uuid
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Literal, Optional, Sequence, Tuple, Union
 
 import databroker.client
 import nslsii
-import requests
 from bluesky_kafka import RemoteDispatcher
 from bluesky_live.run_builder import RunBuilder
+from bluesky_queueserver_api import BPlan
+from bluesky_queueserver_api.http import REManagerAPI
 from tiled.client import from_profile
 
 
@@ -18,10 +18,17 @@ class Agent(ABC):
     """
     Single Plan Agent. These agents should consume data, decide where to measure next,
     and execute a single type of plan (maybe, move and count).
+
+    Base agent sets up a kafka subscription to listen to new stop documents, a catalog to read for experiments,
+    a catalog to write agent status to, and a manager API for the HTTP server.
     """
 
     def __init__(
-        self, *, beamline_tla: str, metadata: Optional[dict] = None, restart_from_uid: Optional[str] = None
+        self,
+        *,
+        beamline_tla: str,
+        metadata: Optional[dict] = None,
+        restart_from_uid: Optional[str] = None,
     ):
         logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
@@ -47,6 +54,8 @@ class Agent(ABC):
             self.restart(restart_from_uid)
         else:
             self.start()
+        self.re_manager = REManagerAPI(http_server_uri=self.server_host)
+        self.re_manager.set_authorization_key(api_key=self.api_key)
 
     @property
     @abstractmethod
@@ -54,6 +63,14 @@ class Agent(ABC):
         """
         Host to POST requests to. Declare as property or as class level attribute.
         Something akin to 'http://localhost:60610'
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def api_key(self):
+        """
+        Key for API security.
         """
         ...
 
@@ -181,20 +198,13 @@ class Agent(ABC):
 
         """
         doc, next_points = self.ask(batch_size)
-        url = Path(self.server_host) / "api" / "queue" / "item" / "add"
-        responses = {}
         for point in next_points:
-            doc, data = dict(
-                pos=self._queue_add_position,
-                item=dict(
-                    name=self.measurement_plan_name,
-                    args=self.measurement_plan_args(point),
-                    item_type="plan",
-                    kwargs=self.measurement_plan_kwargs(point),
-                ),
+            plan = BPlan(
+                self.measurement_plan_name,
+                *self.measurement_plan_args(point),
+                **self.measurement_plan_kwargs(point),
             )
-            r = requests.post(str(url), data=data)
-            responses[point] = r
+            r = self.re_manager.item_add(plan, pos=self._queue_add_position)
             logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
         # TODO: Should I be checking responses for anything?
         #  (Continue on 200, crash on anything else. Probably sensible stuff in requests package.)
