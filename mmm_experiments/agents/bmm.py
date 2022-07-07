@@ -1,3 +1,4 @@
+import ast
 from abc import ABC
 from typing import Optional, Sequence, Tuple
 
@@ -35,7 +36,7 @@ class BMMAgent(Agent, ABC):
     server_host = "https://qserver.nslsl2.bnl.gov/bmm"
     measurement_plan_name = "agent_move_and_measure"
     api_key = "zzzzz"
-    sample_position_motor = "GridX"
+    sample_position_motor = "xafs_x"
 
     def __init__(
         self,
@@ -60,7 +61,8 @@ class BMMAgent(Agent, ABC):
         run_preprocessor.fetch(run, mode="fluorescence")
         # x_data = run_preprocessor.group.k
         y_data = run_preprocessor.group.chi
-        return run.start["Cu_position"], y_data
+        md = ast.literal_eval(run.start["XDI"]["_comment"])
+        return md["Cu_position"], y_data
 
     def measurement_plan_args(self, point):
         """List of arguments to pass to plan"""

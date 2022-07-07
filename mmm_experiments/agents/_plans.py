@@ -90,14 +90,15 @@ def agent_move_and_measure(
     _md["Cu_det_position"] = xafs_det.read()  # TODO: update to correct key
     _md.update(md or {})
     yield from change_edge(["Cu"], focus=True)
-    yield from xafs(element="Cu", md=_md, **kwargs)
+    # xafs doesn't take md, so stuff it into a comment string to be ast.literal_eval()
+    yield from xafs(element="Cu", comment=str(_md), **kwargs)
     yield from bps.mv(motor, Ti_position)
     _md = dict(Ti_position=motor.read())
     yield from bps.mv(xafs_det, Ti_det_position)
     _md["Ti_det_position"] = xafs_det.read()  # TODO: update to correct key
     _md.update(md or {})
     yield from change_edge(["Ti"], focus=True)
-    yield from xafs(element="Ti", md=_md, **kwargs)
+    yield from xafs(element="Ti", comment=str(_md), **kwargs)
 
 
 # ================================== BBB SPECIFIC PLANS =================================== #
