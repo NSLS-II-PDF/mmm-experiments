@@ -112,6 +112,54 @@ class BMMAgent(Agent, ABC):
         return self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
 
 
+class SequentialAgent(BMMAgent):
+    """
+    Hears a stop document and immediately suggests the nearest neighbor
+    Parameters
+    ----------
+    step_size : float
+        How far to step forward in the measurement. Defaults to not moving at all.
+    kwargs :
+        Necessary kwargs for BMMAgent
+    """
+
+    def __init__(self, *, relative_bounds: Tuple[float, float], step_size: float = 0.0, **kwargs):
+        super().__init__(**kwargs)
+        self.step_size = step_size
+        self.relative_min, self.relative_max = relative_bounds
+        self.independent_cache = []
+
+    def tell(self, position, y) -> dict:
+        relative_position = position - self.Cu_origin[0]
+        self.independent_cache.append(relative_position)
+        return dict(position=position, rel_position=relative_position, cache_len=len(self.independent_cache))
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        last = self.independent_cache[-1]
+        point = last + self.step_size
+        if point > self.relative_max:
+            point = self.relative_min
+        abs_position = self.Cu_origin[0] + point
+        doc = dict(last_point=last, next_point=point, absolute_position=abs_position)
+        return doc, [abs_position]
+
+    def report(self):
+        pass
+
+
+class RandomAgent(SequentialAgent):
+    """
+    Hears a stop document and immediately suggests a random point within the bounds.
+    Uses the same signature as SequentialAgent.
+    """
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        point = np.random.uniform(self.relative_min, self.relative_max)
+        abs_position = self.Cu_origin[0] + point
+        doc = dict(next_point=point, absolute_position=abs_position)
+        return doc, [abs_position]
+
+
 class DumbDistanceEXAFSAgent(BMMAgent):
     """The point of this agent is to do precisely one thing: maximize the
     distance between some newly acquired point(s) and the provided reference
@@ -124,8 +172,8 @@ class DumbDistanceEXAFSAgent(BMMAgent):
 
     def __init__(
         self,
-        Cu_origin: float,
-        Ti_origin: float,
+        Cu_origin: Tuple[float, float],
+        Ti_origin: Tuple[float, float],
         Cu_det_position: float,
         Ti_det_position: float,
         relative_bounds,
@@ -138,10 +186,10 @@ class DumbDistanceEXAFSAgent(BMMAgent):
         """
         Parameters
         ----------
-        Cu_origin : float
-            Decided origin of sample in raw motor coordinates.
-        Ti_origin : float
-            Decided origin of sample in raw motor coordinates.
+         Cu_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Cu measurement
+        Ti_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Ti measurement
         Cu_det_position : float
             Absolute motor position for the xafs detector for the Cu measurement.
         Ti_det_position : float
@@ -227,7 +275,7 @@ class DumbDistanceEXAFSAgent(BMMAgent):
         dict
         """
 
-        relative_position = position - self.Cu_origin
+        relative_position = position - self.Cu_origin[0]
         self.relative_position_cache.append(relative_position)
         intensity = np.array(intensity)
         self.exafs_cache.append(intensity)
@@ -292,9 +340,9 @@ class DumbDistanceEXAFSAgent(BMMAgent):
         )
 
         if batch_size == 1:
-            next_points = [float(next_points.to("cpu"))]
+            next_points = [self.Cu_origin[0] + float(next_points.to("cpu"))]
         else:
-            next_points = [float(x.to("cpu")) for x in next_points]
+            next_points = [self.Cu_origin[0] + float(x.to("cpu")) for x in next_points]
 
         doc = dict(
             batch_size=batch_size,
