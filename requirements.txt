@@ -9,3 +9,4 @@ git+https://github.com/maffettone/xca@inline_training#egg=xca
 botorch
 xraylarch
 bluesky-queueserver-api
+mp-api
