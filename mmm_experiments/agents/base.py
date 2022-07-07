@@ -7,15 +7,12 @@ from typing import Literal, Optional, Sequence, Tuple, Union
 
 import databroker.client
 import nslsii
+import numpy as np
 from bluesky_kafka import RemoteDispatcher
 from bluesky_live.run_builder import RunBuilder
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http import REManagerAPI
 from tiled.client import from_profile
-
-
-def _alt_condition(uid):
-    return True
 
 
 class Agent(ABC):
@@ -78,6 +75,18 @@ class Agent(ABC):
         """
         Key for API security.
         """
+        ...
+
+    @property
+    @abstractmethod
+    def measurement_origin(self):
+        """Distinctly useful for having twinned samples and mixin classes. The origin of independent variable."""
+        ...
+
+    @property
+    @abstractmethod
+    def relative_bounds(self):
+        """Relative measurement bounds to consider for the experiment"""
         ...
 
     @property
@@ -327,6 +336,44 @@ def example_run():
     except Exception as e:
         agent.stop(exit_status="fail", reason=f"{e}")
         raise e
+
+
+class SequentialAgentMixin:
+    """Mixin to be used with Agent children"""
+
+    def __init__(self, *, step_size: float = 0.0, **kwargs):
+        super().__init__(**kwargs)
+        self.step_size = step_size
+        self.relative_min, self.relative_max = self.relative_bounds
+        self.independent_cache = []
+
+    def tell(self, position, y) -> dict:
+        relative_position = position - self.measurement_origin
+        self.independent_cache.append(relative_position)
+        return dict(position=position, rel_position=relative_position, cache_len=len(self.independent_cache))
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        last = self.independent_cache[-1]
+        point = last + self.step_size
+        if point > self.relative_max:
+            point = self.relative_min
+        doc = dict(last_point=last, next_point=point)
+        return doc, [point]
+
+
+class RandomAgentMixin:
+    """
+    Hears a stop document and immediately suggests a random point within the bounds.
+    Mixin to be used with Agent Children
+    """
+
+    def tell(self, x, y):
+        return {}
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        point = np.random.uniform(*self.relative_bounds)
+        doc = dict(next_point=point)
+        return doc, [point]
 
 
 class DrowsyAgent(Agent, ABC):

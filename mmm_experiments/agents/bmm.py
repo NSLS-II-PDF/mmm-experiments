@@ -13,7 +13,7 @@ from botorch.optim import optimize_acqf
 from gpytorch.mlls import ExactMarginalLogLikelihood
 
 from ..data.bmm_utils import Pandrosus
-from .base import Agent, DrowsyAgent
+from .base import Agent, DrowsyAgent, RandomAgentMixin, SequentialAgentMixin
 
 
 class DrowsyBMMAgent(DrowsyAgent):
@@ -45,6 +45,7 @@ class BMMAgent(Agent, ABC):
         Ti_origin: Tuple[float, float],
         Cu_det_position: float,
         Ti_det_position: float,
+        relative_bounds: Tuple[float, float],
         metadata: Optional[dict] = None,
         restart_from_uid: Optional[str] = None,
     ):
@@ -60,6 +61,9 @@ class BMMAgent(Agent, ABC):
             Default detector position for Cu measurement
         Ti_det_position : float
             Default detector position for Ti measurement
+        relative_bounds : Tuple[float, float]
+            Relative bounds for the sample measurement. For a 10 cm sample,
+            this would be something like (1, 99).
         metadata : dict
             Optional metadata dictionary for the agent start document
         restart_from_uid : str
@@ -70,6 +74,7 @@ class BMMAgent(Agent, ABC):
         self.Ti_origin = Ti_origin
         self.Cu_det_position = Cu_det_position
         self.Ti_det_position = Ti_det_position
+        self._relative_bounds = relative_bounds
 
     @staticmethod
     def unpack_run(run: databroker.client.BlueskyRun):
@@ -111,8 +116,19 @@ class BMMAgent(Agent, ABC):
     def trigger_condition(self, uid) -> bool:
         return self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
 
+    @property
+    def measurement_origin(self):
+        return self.Cu_origin[0]
 
-class SequentialAgent(BMMAgent):
+    @property
+    def relative_bounds(self):
+        return self._relative_bounds
+
+    def report(self):
+        pass
+
+
+class SequentialAgent(SequentialAgentMixin, BMMAgent):
     """
     Hears a stop document and immediately suggests the nearest neighbor
     Parameters
@@ -123,41 +139,16 @@ class SequentialAgent(BMMAgent):
         Necessary kwargs for BMMAgent
     """
 
-    def __init__(self, *, relative_bounds: Tuple[float, float], step_size: float = 0.0, **kwargs):
-        super().__init__(**kwargs)
-        self.step_size = step_size
-        self.relative_min, self.relative_max = relative_bounds
-        self.independent_cache = []
-
-    def tell(self, position, y) -> dict:
-        relative_position = position - self.Cu_origin[0]
-        self.independent_cache.append(relative_position)
-        return dict(position=position, rel_position=relative_position, cache_len=len(self.independent_cache))
-
-    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
-        last = self.independent_cache[-1]
-        point = last + self.step_size
-        if point > self.relative_max:
-            point = self.relative_min
-        abs_position = self.Cu_origin[0] + point
-        doc = dict(last_point=last, next_point=point, absolute_position=abs_position)
-        return doc, [abs_position]
-
-    def report(self):
-        pass
+    def __init__(self, step_size: float = 0.0, **kwargs):
+        super(SequentialAgentMixin, self).__init__(**kwargs)
+        super().__init__(step_size=step_size)
 
 
-class RandomAgent(SequentialAgent):
+class RandomAgent(RandomAgentMixin, BMMAgent):
     """
     Hears a stop document and immediately suggests a random point within the bounds.
     Uses the same signature as SequentialAgent.
     """
-
-    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
-        point = np.random.uniform(self.relative_min, self.relative_max)
-        abs_position = self.Cu_origin[0] + point
-        doc = dict(next_point=point, absolute_position=abs_position)
-        return doc, [abs_position]
 
 
 class DumbDistanceEXAFSAgent(BMMAgent):
@@ -340,9 +331,9 @@ class DumbDistanceEXAFSAgent(BMMAgent):
         )
 
         if batch_size == 1:
-            next_points = [self.Cu_origin[0] + float(next_points.to("cpu"))]
+            next_points = [float(next_points.to("cpu"))]
         else:
-            next_points = [self.Cu_origin[0] + float(x.to("cpu")) for x in next_points]
+            next_points = [float(x.to("cpu")) for x in next_points]
 
         doc = dict(
             batch_size=batch_size,
@@ -350,6 +341,3 @@ class DumbDistanceEXAFSAgent(BMMAgent):
             acq_value=[float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))],
         )
         return doc, next_points
-
-    def report(self):
-        pass
