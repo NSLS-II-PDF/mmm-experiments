@@ -36,18 +36,35 @@ class BMMAgent(Agent, ABC):
     server_host = "https://qserver.nslsl2.bnl.gov/bmm"
     measurement_plan_name = "agent_move_and_measure"
     api_key = "zzzzz"
-    sample_position_motor = "xafs_x"
+    sample_position_motors = ("xafs_x", "xafs_y")
 
     def __init__(
         self,
         *,
-        Cu_origin: float,
-        Ti_origin: float,
+        Cu_origin: Tuple[float, float],
+        Ti_origin: Tuple[float, float],
         Cu_det_position: float,
         Ti_det_position: float,
         metadata: Optional[dict] = None,
         restart_from_uid: Optional[str] = None,
     ):
+        """
+
+        Parameters
+        ----------
+        Cu_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Cu measurement
+        Ti_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Ti measurement
+        Cu_det_position : float
+            Default detector position for Cu measurement
+        Ti_det_position : float
+            Default detector position for Ti measurement
+        metadata : dict
+            Optional metadata dictionary for the agent start document
+        restart_from_uid : str
+            Optional uid to reload agent from previous run.
+        """
         super().__init__(beamline_tla="bmm", metadata=metadata, restart_from_uid=restart_from_uid)
         self.Cu_origin = Cu_origin
         self.Ti_origin = Ti_origin
@@ -66,8 +83,14 @@ class BMMAgent(Agent, ABC):
 
     def measurement_plan_args(self, point):
         """List of arguments to pass to plan"""
-
-        return self.sample_position_motor, self.Cu_origin + point, self.Ti_origin + point
+        return (
+            self.sample_position_motors[0],
+            self.Cu_origin[0] + point,
+            self.Ti_origin[0] + point,
+            self.sample_position_motors[1],
+            self.Cu_origin[1],
+            self.Ti_origin[1],
+        )
 
     def measurement_plan_kwargs(self, point) -> dict:
         return dict(
