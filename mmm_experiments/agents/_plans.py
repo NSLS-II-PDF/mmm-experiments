@@ -1,4 +1,5 @@
 import bluesky.preprocessors as bpp
+import redis
 from bluesky import plan_stubs as bps
 
 
@@ -33,7 +34,7 @@ def agent_sample_count(position: float, exposure: float, *, md=None):
 
 
 # ================================== BMM SPECIFIC PLANS =================================== #
-# ================================== 99-agent_plans.py  =================================== #
+# ================================== BMM/agent_plans.py =================================== #
 def xafs(*args, filename, **kwargs):
     """Core plan in BMM startup"""
     ...
@@ -84,22 +85,36 @@ def agent_move_and_measure(
             >>> 'steps': '10 2 0.3 0.05k',
             >>> 'times': '0.5 0.5 0.5 0.5'}
     """
-    yield from bps.mv(motor, Cu_position)
-    _md = dict(Cu_position=motor.read())
-    yield from bps.mv(xafs_det, Cu_det_position)
-    _md["Cu_det_position"] = xafs_det.read()  # TODO: update to correct key
-    _md.update(md or {})
-    yield from change_edge(["Cu"], focus=True)
-    # xafs doesn't take md, so stuff it into a comment string to be ast.literal_eval()
-    yield from xafs(element="Cu", comment=str(_md), **kwargs)
-    yield from bps.mv(motor, Ti_position)
-    _md = dict(Ti_position=motor.read())
-    yield from bps.mv(xafs_det, Ti_det_position)
-    _md["Ti_det_position"] = xafs_det.read()  # TODO: update to correct key
-    _md.update(md or {})
-    yield from change_edge(["Ti"], focus=True)
-    yield from xafs(element="Ti", comment=str(_md), **kwargs)
+
+    def Cu_plan():
+        yield from bps.mv(motor, Cu_position)
+        _md = dict(Cu_position=motor.position)
+        yield from bps.mv(xafs_det, Cu_det_position)
+        _md["Cu_det_position"] = xafs_det.position
+        _md.update(md or {})
+        yield from change_edge(["Cu"], focus=True)
+        # xafs doesn't take md, so stuff it into a comment string to be ast.literal_eval()
+        yield from xafs(element="Cu", comment=str(_md), **kwargs)
+
+    def Ti_plan():
+        yield from bps.mv(motor, Ti_position)
+        _md = dict(Ti_position=motor.position)
+        yield from bps.mv(xafs_det, Ti_det_position)
+        _md["Ti_det_position"] = xafs_det.position
+        _md.update(md or {})
+        yield from change_edge(["Ti"], focus=True)
+        yield from xafs(element="Ti", comment=str(_md), **kwargs)
+
+    rkvs = redis.Redis(host="xf06bm-ioc2", port=6379, db=0)
+    element = rkvs.get("BMM:pds:element").decode("utf-8")
+    # edge = rkvs.get('BMM:pds:edge').decode('utf-8')
+    if element == "Ti":
+        yield from Ti_plan()
+        yield from Cu_plan()
+    else:
+        yield from Cu_plan()
+        yield from Ti_plan()
 
 
 # ================================== BBB SPECIFIC PLANS =================================== #
-# ================================== 99-agent_plans.py  =================================== #
+# ================================== BMM/agent_plans.py =================================== #
