@@ -1,3 +1,8 @@
+import ast
+from abc import ABC
+from typing import Optional, Sequence, Tuple
+
+import databroker.client
 import numpy as np
 import torch
 from botorch.acquisition import UpperConfidenceBound
@@ -7,12 +12,146 @@ from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
 from gpytorch.mlls import ExactMarginalLogLikelihood
 
-from .base import Agent
+from ..data.bmm_utils import Pandrosus
+from .base import Agent, DrowsyAgent, RandomAgentMixin, SequentialAgentMixin
 
-DATA_KEY = None  # ODO
+
+class DrowsyBMMAgent(DrowsyAgent):
+    """
+    It's an agent that just lounges around all day.
+    Alternates sending args vs kwargs to do the same thing.
+    """
+
+    server_host = "https://qserver.nslsl2.bnl.gov/bmm"
+    api_key = "zzzzz"
 
 
-class DumbDistanceEXAFSAgent(Agent):
+class BMMAgent(Agent, ABC):
+    """
+    Abstract Agent containing communication and data defaults for BMM
+    While the BMM experiment will measure both the Cu and Ti edge.
+    The agent will by default only consider the data from the Cu K-edge measurement.
+    """
+
+    server_host = "https://qserver.nslsl2.bnl.gov/bmm"
+    measurement_plan_name = "agent_move_and_measure"
+    api_key = "zzzzz"
+    sample_position_motors = ("xafs_x", "xafs_y")
+
+    def __init__(
+        self,
+        *,
+        Cu_origin: Tuple[float, float],
+        Ti_origin: Tuple[float, float],
+        Cu_det_position: float,
+        Ti_det_position: float,
+        relative_bounds: Tuple[float, float],
+        metadata: Optional[dict] = None,
+        restart_from_uid: Optional[str] = None,
+    ):
+        """
+
+        Parameters
+        ----------
+        Cu_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Cu measurement
+        Ti_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Ti measurement
+        Cu_det_position : float
+            Default detector position for Cu measurement
+        Ti_det_position : float
+            Default detector position for Ti measurement
+        relative_bounds : Tuple[float, float]
+            Relative bounds for the sample measurement. For a 10 cm sample,
+            this would be something like (1, 99).
+        metadata : dict
+            Optional metadata dictionary for the agent start document
+        restart_from_uid : str
+            Optional uid to reload agent from previous run.
+        """
+        super().__init__(beamline_tla="bmm", metadata=metadata, restart_from_uid=restart_from_uid)
+        self.Cu_origin = Cu_origin
+        self.Ti_origin = Ti_origin
+        self.Cu_det_position = Cu_det_position
+        self.Ti_det_position = Ti_det_position
+        self._relative_bounds = relative_bounds
+
+    @staticmethod
+    def unpack_run(run: databroker.client.BlueskyRun):
+        """Gets Chi(k) and absolute position"""
+        run_preprocessor = Pandrosus()
+        run_preprocessor.fetch(run, mode="fluorescence")
+        # x_data = run_preprocessor.group.k
+        y_data = run_preprocessor.group.chi
+        md = ast.literal_eval(run.start["XDI"]["_comment"])
+        return md["Cu_position"], y_data
+
+    def measurement_plan_args(self, point):
+        """List of arguments to pass to plan"""
+        return (
+            self.sample_position_motors[0],
+            self.Cu_origin[0] + point,
+            self.Ti_origin[0] + point,
+            self.sample_position_motors[1],
+            self.Cu_origin[1],
+            self.Ti_origin[1],
+        )
+
+    def measurement_plan_kwargs(self, point) -> dict:
+        return dict(
+            Cu_det_position=self.Cu_det_position,
+            Ti_det_position=self.Ti_det_position,
+            filename="MultimodalMadness",
+            nscans=1,
+            start="next",
+            mode="fluorescence",
+            edge="K",
+            sample="CuTi",
+            preparation="film sputtered on silica",
+            bounds="-200 -30 -10 25 12k",
+            steps="10 2 0.3 0.05k",
+            times="0.5 0.5 0.5 0.5",
+        )
+
+    def trigger_condition(self, uid) -> bool:
+        return self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
+
+    @property
+    def measurement_origin(self):
+        return self.Cu_origin[0]
+
+    @property
+    def relative_bounds(self):
+        return self._relative_bounds
+
+    def report(self):
+        pass
+
+
+class SequentialAgent(SequentialAgentMixin, BMMAgent):
+    """
+    Hears a stop document and immediately suggests the nearest neighbor
+    Parameters
+    ----------
+    step_size : float
+        How far to step forward in the measurement. Defaults to not moving at all.
+    kwargs :
+        Necessary kwargs for BMMAgent
+    """
+
+    def __init__(self, step_size: float = 0.0, **kwargs):
+        super(SequentialAgentMixin, self).__init__(**kwargs)
+        super().__init__(step_size=step_size)
+
+
+class RandomAgent(RandomAgentMixin, BMMAgent):
+    """
+    Hears a stop document and immediately suggests a random point within the bounds.
+    Uses the same signature as SequentialAgent.
+    """
+
+
+class DumbDistanceEXAFSAgent(BMMAgent):
     """The point of this agent is to do precisely one thing: maximize the
     distance between some newly acquired point(s) and the provided reference
     spectra. The reference EXAFS represent "known phases". The argument is
@@ -22,23 +161,30 @@ class DumbDistanceEXAFSAgent(Agent):
     Multiple references can be provided, and the distance considered will be
     the minimum distance for any of the references."""
 
-    server_host = None  # TODO "qserver1.nsls2.bnl.gov:60610"
-    measurement_plan_name = None  # TODO ? "mv_and_jog"
-
     def __init__(
         self,
-        sample_origin,
+        Cu_origin: Tuple[float, float],
+        Ti_origin: Tuple[float, float],
+        Cu_det_position: float,
+        Ti_det_position: float,
         relative_bounds,
         reference_spectra,
         device="cpu",
         beta_UCB=0.1,
+        metadata: Optional[dict] = None,
+        restart_from_uid: Optional[str] = None,
     ):
         """
         Parameters
         ----------
-        sample_origin : float
-            Decided origin of sample in raw motor coordinates. Assumed to be
-            one dimensional for now. TODO
+         Cu_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Cu measurement
+        Ti_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Ti measurement
+        Cu_det_position : float
+            Absolute motor position for the xafs detector for the Cu measurement.
+        Ti_det_position : float
+            Absolute motor position for the xafs detector for the Ti measurement.
         relative_bounds : tuple
             Relative bounds for the sample measurement. For a 10 cm sample,
             this would be something like (1, 99).
@@ -61,9 +207,15 @@ class DumbDistanceEXAFSAgent(Agent):
         if len(relative_bounds) != 2:
             raise ValueError(f"relative_bounds={relative_bounds} must be a length-2 tuple " "of floats")
 
-        super().__init__(beamline_tla="bmm")
+        super().__init__(
+            Cu_origin=Cu_origin,
+            Ti_origin=Ti_origin,
+            Cu_det_position=Cu_det_position,
+            Ti_det_position=Ti_det_position,
+            metadata=metadata,
+            restart_from_uid=restart_from_uid,
+        )
 
-        self.sample_origin = sample_origin
         self.device = torch.device(device)
         self.bounds = torch.tensor(relative_bounds).to(self.device).float()
         self.reference_spectra = np.array(reference_spectra)
@@ -77,48 +229,6 @@ class DumbDistanceEXAFSAgent(Agent):
 
         # Store all of the measured distances to the reference spectra
         self.target_cache = []
-
-    @property
-    def server_host(self):
-        """Host to POST requests to. Declare as property or as class level
-        attribute. Something akin to 'http://localhost:60610'
-        """
-
-        raise NotImplementedError
-
-    @property
-    def measurement_plan_name(self):
-        """String name of registered plan"""
-
-        raise NotImplementedError
-
-    def measurement_plan_args(self, *args):
-        """List of arguments to pass to plan"""
-
-        raise NotImplementedError
-
-    def measurement_plan_kwargs(self, point) -> dict:
-        return {}
-
-    @staticmethod
-    def unpack_run(run):
-        """
-        Consume a Bluesky run from tiled and emit the relevant x and y for the
-        agent.
-
-        Parameters
-        ----------
-        run : databroker.client.BlueskyRun
-
-        Returns
-        -------
-        independent_var :
-            The independent variable of the measurement
-        dependent_var :
-            The measured data, processed for relevance
-        """
-
-        raise NotImplementedError
 
     def _get_distances_from_reference_spectra(self, intensity):
         """
@@ -142,7 +252,7 @@ class DumbDistanceEXAFSAgent(Agent):
     def tell(self, position, intensity):
         """Takes the position of the motor and the measured intensity (which
         is assumed to be on a standardized grid) and returns a dictionary
-        of documentation (?? TODO).
+        of documentation
 
         Parameters
         ----------
@@ -156,7 +266,7 @@ class DumbDistanceEXAFSAgent(Agent):
         dict
         """
 
-        relative_position = position - self.sample_origin
+        relative_position = position - self.Cu_origin[0]
         self.relative_position_cache.append(relative_position)
         intensity = np.array(intensity)
         self.exafs_cache.append(intensity)
@@ -165,14 +275,15 @@ class DumbDistanceEXAFSAgent(Agent):
         new_distance = self._get_distances_from_reference_spectra(intensity)
         self.target_cache.append(new_distance)
 
-        # Doc? TODO (what is this for?)
         return dict(
             position=position,
             rel_position=relative_position,
             intensity=intensity,
         )
 
-    def ask(self, batch_size=1, ucb_kwargs=dict(), optimize_acqf_kwargs={"num_restarts": 5, "raw_samples": 20}):
+    def ask(
+        self, batch_size=1, ucb_kwargs=dict(), optimize_acqf_kwargs={"num_restarts": 5, "raw_samples": 20}
+    ) -> Tuple[dict, Sequence]:
         """Trains a single task Gaussian process to predict the distance to the
         nearest reference spectrum as a function of relative position. Optimize
         over this GP using an upper confidence bound acquisition function to

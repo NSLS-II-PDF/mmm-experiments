@@ -3,14 +3,15 @@ import signal
 import sys
 import uuid
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Literal, Optional, Sequence, Tuple, Union
 
 import databroker.client
 import nslsii
-import requests
+import numpy as np
 from bluesky_kafka import RemoteDispatcher
 from bluesky_live.run_builder import RunBuilder
+from bluesky_queueserver_api import BPlan
+from bluesky_queueserver_api.http import REManagerAPI
 from tiled.client import from_profile
 
 
@@ -18,24 +19,35 @@ class Agent(ABC):
     """
     Single Plan Agent. These agents should consume data, decide where to measure next,
     and execute a single type of plan (maybe, move and count).
+
+    Base agent sets up a kafka subscription to listen to new stop documents, a catalog to read for experiments,
+    a catalog to write agent status to, and a manager API for the HTTP server.
     """
 
     def __init__(
-        self, *, beamline_tla: str, metadata: Optional[dict] = None, restart_from_uid: Optional[str] = None
+        self,
+        *,
+        beamline_tla: str,
+        metadata: Optional[dict] = None,
+        restart_from_uid: Optional[str] = None,
     ):
         logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
         self.kafka_dispatcher = RemoteDispatcher(
-            topics=[f"{beamline_tla}.bluesky.runengine.documents"],
+            topics=[f"{beamline_tla}.bluesky.pdfstream.documents"]
+            if beamline_tla == "pdf"
+            else [f"{beamline_tla}.bluesky.runengine.documents"],  # PDF will attend to analyized data
             bootstrap_servers=",".join(self.kafka_config["bootstrap_servers"]),
             group_id=self.kafka_group_id,
             consumer_config=self.kafka_config["runengine_producer_config"],
         )
         logging.debug("Kafka setup sucessfully.")
-        self.exp_catalog = from_profile(beamline_tla)
+        self.exp_catalog = (
+            from_profile("pdf_bluesky_sandbox") if beamline_tla == "pdf" else from_profile(beamline_tla)
+        )
         logging.info(f"Reading data from catalog: {self.exp_catalog}")
-        self.agent_catalog = from_profile(beamline_tla)["bluesky_sandbox"]
+        self.agent_catalog = from_profile(f"{beamline_tla}_bluesky_sandbox")
         logging.info(f"Writing data to catalog: {self.agent_catalog}")
         self.metadata = metadata or {}
         self.metadata["beamline_tla"] = beamline_tla
@@ -45,6 +57,8 @@ class Agent(ABC):
             self.restart(restart_from_uid)
         else:
             self.start()
+        self.re_manager = REManagerAPI(http_server_uri=self.server_host)
+        self.re_manager.set_authorization_key(api_key=self.api_key)
 
     @property
     @abstractmethod
@@ -53,6 +67,26 @@ class Agent(ABC):
         Host to POST requests to. Declare as property or as class level attribute.
         Something akin to 'http://localhost:60610'
         """
+        ...
+
+    @property
+    @abstractmethod
+    def api_key(self):
+        """
+        Key for API security.
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def measurement_origin(self):
+        """Distinctly useful for having twinned samples and mixin classes. The origin of independent variable."""
+        ...
+
+    @property
+    @abstractmethod
+    def relative_bounds(self):
+        """Relative measurement bounds to consider for the experiment"""
         ...
 
     @property
@@ -179,23 +213,14 @@ class Agent(ABC):
 
         """
         doc, next_points = self.ask(batch_size)
-        url = Path(self.server_host) / "api" / "queue" / "item" / "add"
-        responses = {}
         for point in next_points:
-            doc, data = dict(
-                pos=self._queue_add_position,
-                item=dict(
-                    name=self.measurement_plan_name,
-                    args=self.measurement_plan_args(point),
-                    item_type="plan",
-                    kwargs=self.measurement_plan_kwargs(point),
-                ),
+            plan = BPlan(
+                self.measurement_plan_name,
+                *self.measurement_plan_args(point),
+                **self.measurement_plan_kwargs(point),
             )
-            r = requests.post(str(url), data=data)
-            responses[point] = r
+            r = self.re_manager.item_add(plan, pos=self._queue_add_position)
             logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
-        # TODO: Should I be checking responses for anything?
-        #  (Continue on 200, crash on anything else. Probably sensible stuff in requests package.)
         return doc
 
     def _write_event(self, stream, doc):
@@ -207,10 +232,21 @@ class Agent(ABC):
             self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
         self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
 
+    @staticmethod
+    def trigger_condition(uid) -> bool:
+        return True
+
     def _on_stop_router(self, name, doc):
         """Service that runs each time a stop document is seen."""
         if name == "stop":
             uid = doc["run_start"]
+            if not self.trigger_condition(uid):
+                logging.debug(
+                    f"New data detected, but trigger condition not met. "
+                    f"The agent will ignore this start doc: {uid}"
+                )
+                return
+
             logging.info(
                 f"New data detected, telling the agent about this start doc "
                 f"and asking for a new suggestion: {uid}"
@@ -302,13 +338,50 @@ def example_run():
         raise e
 
 
-class DrowsyAgent(Agent):
+class SequentialAgentMixin:
+    """Mixin to be used with Agent children"""
+
+    def __init__(self, *, step_size: float = 0.0, **kwargs):
+        super().__init__(**kwargs)
+        self.step_size = step_size
+        self.relative_min, self.relative_max = self.relative_bounds
+        self.independent_cache = []
+
+    def tell(self, position, y) -> dict:
+        relative_position = position - self.measurement_origin
+        self.independent_cache.append(relative_position)
+        return dict(position=position, rel_position=relative_position, cache_len=len(self.independent_cache))
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        last = self.independent_cache[-1]
+        point = last + self.step_size
+        if point > self.relative_max:
+            point = self.relative_min
+        doc = dict(last_point=last, next_point=point)
+        return doc, [point]
+
+
+class RandomAgentMixin:
+    """
+    Hears a stop document and immediately suggests a random point within the bounds.
+    Mixin to be used with Agent Children
+    """
+
+    def tell(self, x, y):
+        return {}
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        point = np.random.uniform(*self.relative_bounds)
+        doc = dict(next_point=point)
+        return doc, [point]
+
+
+class DrowsyAgent(Agent, ABC):
     """
     It's an agent that just lounges around all day.
     Alternates sending args vs kwargs to do the same thing.
     """
 
-    server_host = "qserver1.nslsl2.bnl.gov:60611"
     measurement_plan_name = "agent_driven_nap"
 
     def __init__(self, *, beamline_tla: str):
@@ -335,3 +408,6 @@ class DrowsyAgent(Agent):
 
     def ask(self, batch_size: int) -> Tuple[dict, Sequence]:
         return dict(batch_size=batch_size), [0.0]
+
+    def report(self):
+        pass
