@@ -1,3 +1,4 @@
+from abc import ABC
 from collections import namedtuple
 from pathlib import Path
 from typing import Literal, Tuple, Union
@@ -14,7 +15,7 @@ from tiled.client import from_profile
 from xca.ml.torch.cnn import EnsembleCNN
 from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
 
-from .base import Agent, DrowsyAgent
+from .base import Agent, DrowsyAgent, RandomAgentMixin, SequentialAgentMixin
 
 Representation = namedtuple("Representation", "probabilities shannon_entropy reconstruction_loss")
 
@@ -29,11 +30,77 @@ class DrowsyPDFAgent(DrowsyAgent):
     api_key = "yyyyy"
 
 
-class PDFAgent(Agent):
+class PDFAgent(Agent, ABC):
     server_host = "https://qserver.nslsl2.bnl.gov/pdf"
-    measurement_plan_name = "mv_and_jog"  # This plan does not exist yet
+    measurement_plan_name = "agent_sample_count"
     api_key = "yyyyy"
 
+    def __init__(self, *, sample_origin: Tuple[float, float], relative_bounds: Tuple[float, float]):
+        """
+        Base class for all PDF agents
+
+        Parameters
+        ----------
+        sample_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates
+        relative_bounds : Tuple[float, float]
+            Relative bounds for the sample measurement. For a 10 cm sample, this would be something like (1, 99).
+        """
+        super().__init__(beamline_tla="pdf")
+        self.exp_catalog = from_profile("pdf_bluesky_sandbox")
+        self.sample_origin = sample_origin
+        self._relative_bounds = relative_bounds
+
+    @property
+    def measurement_origin(self):
+        return self.sample_origin[0]
+
+    @property
+    def relative_bounds(self):
+        return self._relative_bounds
+
+    def measurement_plan_args(self, x_position) -> list:
+        """Plan to be writen than moves to an x_position then jogs up and down relatively in y"""
+        return [5, "Grid_X", x_position]
+
+    def measurement_plan_kwargs(self, point) -> dict:
+        return {}
+
+    @staticmethod
+    def unpack_run(run: BlueskyRun):
+        """"""
+        # x = np.array(run.primary.data["chi_2theta"][0]) # TODO add preprocessing step to get the binning
+        y = np.array(run.primary.data["chi_I"][0])
+        return run.start["Grid_X"], y
+
+    def report(self):
+        pass
+
+
+class SequentialAgent(SequentialAgentMixin, PDFAgent):
+    """
+    Hears a stop document and immediately suggests the nearest neighbor
+    Parameters
+    ----------
+    step_size : float
+        How far to step forward in the measurement. Defaults to not moving at all.
+    kwargs :
+        Necessary kwargs for BMMAgent
+    """
+
+    def __init__(self, step_size: float = 0.0, **kwargs):
+        super(SequentialAgentMixin, self).__init__(**kwargs)
+        super().__init__(step_size=step_size)
+
+
+class RandomAgent(RandomAgentMixin, PDFAgent):
+    """
+    Hears a stop document and immediately suggests a random point within the bounds.
+    Uses the same signature as SequentialAgent.
+    """
+
+
+class XCAAgent(PDFAgent):
     def __init__(
         self,
         sample_origin: Tuple[float, float],
@@ -57,9 +124,7 @@ class PDFAgent(Agent):
         ucb_beta : float
             Value for exporative weighting in upper confidence bound acquisition function
         """
-        super().__init__(beamline_tla="pdf")
-        self.exp_catalog = from_profile("nsls2")["pdf"]["bluesky_sandbox"]
-        self.sample_origin = sample_origin
+        super().__init__(sample_origin=sample_origin, relative_bounds=relative_bounds)
         self.checkpoint = torch.load(str(model_checkpoint))
         self.device = torch.device(device)
         self.bounds = torch.tensor(relative_bounds).to(self.device)
@@ -71,20 +136,6 @@ class PDFAgent(Agent):
         self.position_cache = []
         self.representation_cache = []
         self.beta = ucb_beta
-
-    def measurement_plan_args(self, x_position) -> list:
-        """Plan to be writen than moves to an x_position then jogs up and down relatively in y"""
-        return [5, "Grid_X", x_position, "Grid_Y", -0.1, 0.1]
-
-    def measurement_plan_kwargs(self, point) -> dict:
-        return {}
-
-    @staticmethod
-    def unpack_run(run: BlueskyRun):
-        """"""
-        # x = np.array(run.primary.data["chi_2theta"][0])
-        y = np.array(run.primary.data["chi_I"][0])
-        return run.start["Grid_X"], y
 
     def tell(self, position, intensity):
         """
