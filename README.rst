@@ -49,6 +49,7 @@ Running with a local mongo
 --------------------------
 - Following instructions here: https://www.mongodb.com/compatibility/docker
 - `data/testing_config.yml` goes in `~/.config/tiled/profiles` or `./venv/etc/tiled/profiles`
+    - This file goes to similar locations on the remote machine running the agents on the science network.
 
 In terminal:
 

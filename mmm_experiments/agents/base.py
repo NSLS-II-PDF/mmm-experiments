@@ -46,9 +46,11 @@ class Agent(ABC):
             consumer_config=self.kafka_config["runengine_producer_config"],
         )
         logging.debug("Kafka setup sucessfully.")
-        self.exp_catalog = from_profile(beamline_tla)
+        self.exp_catalog = (
+            from_profile("pdf_bluesky_sandbox") if beamline_tla == "pdf" else from_profile(beamline_tla)
+        )
         logging.info(f"Reading data from catalog: {self.exp_catalog}")
-        self.agent_catalog = from_profile("nsls2")[beamline_tla]["bluesky_sandbox"]
+        self.agent_catalog = from_profile(f"{beamline_tla}_bluesky_sandbox")
         logging.info(f"Writing data to catalog: {self.agent_catalog}")
         self.metadata = metadata or {}
         self.metadata["beamline_tla"] = beamline_tla
