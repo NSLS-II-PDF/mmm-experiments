@@ -8,7 +8,7 @@ from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
 # BEGIN XRD PARAMETERS #
 param_dict = {
     "wavelength": 0.1665,
-    "noise_std": 7e-3,
+    "noise_std": 5e-4,
     "instrument_radius": 1000.0,
     "theta_m": 0.0,
     "tth_min": 0.1,
@@ -19,10 +19,10 @@ kwargs = {
     "bkg_2": (-1e-4, 1e-4),
     "bkg_1": (-1e-4, 1e-4),
     "bkg_0": (0, 1e-3),
-    "march_range": (0.8, 1.0),
+    "march_range": (0.5, 1.0),
     "isotropic_expansion": (-0.05, 0.05),
 }
-shape_limit = 1e-2
+shape_limit = 1e-3
 
 cif_paths = list((Path(__file__).parent / "phases").glob("*.cif"))
 
