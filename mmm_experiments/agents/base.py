@@ -330,6 +330,8 @@ class Agent(ABC):
 
 def example_run():
     """Example function for running an agent."""
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
     try:
         agent = Agent(beamline_tla="tla")
         signal.signal(signal.SIGINT, agent.signal_handler)
