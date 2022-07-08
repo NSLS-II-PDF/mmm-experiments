@@ -40,10 +40,25 @@ Proposed Package Structure
     - pdf
     - bmm
 
-Features
---------
 
-* TODO
+Setting up Tiled Access
+-----------------------
+- `data/local_mmm_config.yml` goes in `~/.config/tiled/profiles` or `./venv/etc/tiled/profiles`
+- `data/bmm_patches.py` goes in `~/.config/tiled/` or `./venv/etc/tiled/`
+- `data/make_tiled_links.sh` goes in `~/.config/tiled/` or `./venv/etc/tiled/`
+- Execute make_tiled_links.sh from the tiled directory to create a set of soft links.
+- Access needs to be opened up on the machine, a la: https://github.com/NSLS2/ansible/pull/925
+
+Checking with python:
+
+.. code-block:: python
+
+    from tiled.client import from_profile
+    from tiled.profiles import list_profiles
+    list_profiles()
+    catalog = from_profile("bmm")
+    catalog = from_profile("bmm_bluesky_sandbox")
+    catalog = from_profile("pdf_bluesky_sandbox")
 
 Running with a local mongo
 --------------------------
