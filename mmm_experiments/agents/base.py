@@ -232,7 +232,7 @@ class Agent(ABC):
         only allowing the beamline scientists to open and close the environment.
         A queue cannot be started in a closed environment.
         """
-        status = self.re_manager.status()
+        status = self.re_manager.status(reload=True)
         if (
             status["items_in_queue"] == 1
             and status["worker_environment_exists"] is True

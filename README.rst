@@ -161,3 +161,4 @@ Running List of Gripes/Complaints/Bugs/Suggested Improvements
     - Our current strategy is that the beamline scientist controls the state of the queue-server environment.
     - The agents are then allowed to try and start/stop the queue.
     - An emergency stop inolves pausing the current plan. Aborting the plan. Closing the environment.
+- Currently efforts have been put forward to use conditionals to avoid errors in queue/http server. In production version all exceptions including communication timeout exceptions should be properly processed, but this may work fine for this experiment.
