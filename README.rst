@@ -47,6 +47,8 @@ Setting up Tiled Access
 - `data/bmm_patches.py` goes in `~/.config/tiled/` or `./venv/etc/tiled/`
 - `data/make_tiled_links.sh` goes in `~/.config/tiled/` or `./venv/etc/tiled/`
 - Execute make_tiled_links.sh from the tiled directory to create a set of soft links.
+- Access needs to be opened up on the machine, a la: https://github.com/NSLS2/ansible/pull/925
+
 Checking with python:
 
 .. code-block:: python
