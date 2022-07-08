@@ -11,3 +11,4 @@ xraylarch
 bluesky-queueserver-api
 bluesky_live
 mp-api
+area-detector-handlers
