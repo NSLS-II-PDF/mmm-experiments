@@ -40,15 +40,31 @@ Proposed Package Structure
     - pdf
     - bmm
 
-Features
---------
 
-* TODO
+Setting up Tiled Access
+-----------------------
+- `data/local_mmm_config.yml` goes in `~/.config/tiled/profiles` or `./venv/etc/tiled/profiles`
+- `data/bmm_patches.py` goes in `~/.config/tiled/` or `./venv/etc/tiled/`
+- `data/make_tiled_links.sh` goes in `~/.config/tiled/` or `./venv/etc/tiled/`
+- Execute make_tiled_links.sh from the tiled directory to create a set of soft links.
+- Access needs to be opened up on the machine, a la: https://github.com/NSLS2/ansible/pull/925
+
+Checking with python:
+
+.. code-block:: python
+
+    from tiled.client import from_profile
+    from tiled.profiles import list_profiles
+    list_profiles()
+    catalog = from_profile("bmm")
+    catalog = from_profile("bmm_bluesky_sandbox")
+    catalog = from_profile("pdf_bluesky_sandbox")
 
 Running with a local mongo
 --------------------------
 - Following instructions here: https://www.mongodb.com/compatibility/docker
 - `data/testing_config.yml` goes in `~/.config/tiled/profiles` or `./venv/etc/tiled/profiles`
+    - This file goes to similar locations on the remote machine running the agents on the science network.
 
 In terminal:
 
@@ -136,3 +152,12 @@ in an env where the package is installed.
 This will publish to the topic pdf.bluesky.pdfstream.documents and insert into the pdf_bluesky_sandbox databroker.
 To work this strips out the two images from the pdfstream data stream.
 
+
+Running List of Gripes/Complaints/Bugs/Suggested Improvements
+-------------------------------------------------------------
+- The way the agent inserts documents into db accesses too many private attributes.
+This is either the wrong way to do things, or the right way doesn't exist yet.
+- Security of the queue. Agents need to be able to start the queue, but this creates a safety issue for beamline emergencies.
+    - Our current strategy is that the beamline scientist controls the state of the queue-server environment.
+    - The agents are then allowed to try and start/stop the queue.
+    - An emergency stop inolves pausing the current plan. Aborting the plan. Closing the environment.

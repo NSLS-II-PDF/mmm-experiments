@@ -18,3 +18,22 @@ pdf_bluesky_sandbox:
         path: /
         args:
           uri: mongodb://databroker.pdf.nsls2.bnl.local/bluesky_sandbox
+
+bmm:
+  direct:
+    authentication:
+      allow_anonymous_access: true
+    trees:
+      - tree: databroker.mongo_normalized:Tree.from_uri
+        path: /
+        args:
+          uri: mongodb://databroker.bmm.nsls2.bnl.local/metadatastore-production-v1
+          asset_registry_uri: mongodb://databroker.bmm.nsls2.bnl.local/filestore-production-v1
+          handler_registry:
+            BMM_USBCAM: bmm_patches:BMM_JPEG_HANDLER
+            BMM_XAS_WEBCAM: bmm_patches:BMM_JPEG_HANDLER
+            BMM_XRD_WEBCAM: bmm_patches:BMM_JPEG_HANDLER
+            BMM_ANALOG_CAMERA: bmm_patches:BMM_JPEG_HANDLER
+            XSP3: area_detector_handlers.handlers:Xspress3HDF5Handler
+          transforms:
+            descriptor: bmm_patches:patch_descriptor

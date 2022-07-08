@@ -13,7 +13,7 @@ from botorch.optim import optimize_acqf
 from gpytorch.mlls import ExactMarginalLogLikelihood
 
 from ..data.bmm_utils import Pandrosus
-from .base import Agent, DrowsyAgent
+from .base import Agent, DrowsyAgent, RandomAgentMixin, SequentialAgentMixin
 
 
 class DrowsyBMMAgent(DrowsyAgent):
@@ -36,23 +36,45 @@ class BMMAgent(Agent, ABC):
     server_host = "https://qserver.nslsl2.bnl.gov/bmm"
     measurement_plan_name = "agent_move_and_measure"
     api_key = "zzzzz"
-    sample_position_motor = "xafs_x"
+    sample_position_motors = ("xafs_x", "xafs_y")
 
     def __init__(
         self,
         *,
-        Cu_origin: float,
-        Ti_origin: float,
+        Cu_origin: Tuple[float, float],
+        Ti_origin: Tuple[float, float],
         Cu_det_position: float,
         Ti_det_position: float,
+        relative_bounds: Tuple[float, float],
         metadata: Optional[dict] = None,
         restart_from_uid: Optional[str] = None,
     ):
+        """
+
+        Parameters
+        ----------
+        Cu_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Cu measurement
+        Ti_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Ti measurement
+        Cu_det_position : float
+            Default detector position for Cu measurement
+        Ti_det_position : float
+            Default detector position for Ti measurement
+        relative_bounds : Tuple[float, float]
+            Relative bounds for the sample measurement. For a 10 cm sample,
+            this would be something like (1, 99).
+        metadata : dict
+            Optional metadata dictionary for the agent start document
+        restart_from_uid : str
+            Optional uid to reload agent from previous run.
+        """
         super().__init__(beamline_tla="bmm", metadata=metadata, restart_from_uid=restart_from_uid)
         self.Cu_origin = Cu_origin
         self.Ti_origin = Ti_origin
         self.Cu_det_position = Cu_det_position
         self.Ti_det_position = Ti_det_position
+        self._relative_bounds = relative_bounds
 
     @staticmethod
     def unpack_run(run: databroker.client.BlueskyRun):
@@ -66,8 +88,14 @@ class BMMAgent(Agent, ABC):
 
     def measurement_plan_args(self, point):
         """List of arguments to pass to plan"""
-
-        return self.sample_position_motor, self.Cu_origin + point, self.Ti_origin + point
+        return (
+            self.sample_position_motors[0],
+            self.Cu_origin[0] + point,
+            self.Ti_origin[0] + point,
+            self.sample_position_motors[1],
+            self.Cu_origin[1],
+            self.Ti_origin[1],
+        )
 
     def measurement_plan_kwargs(self, point) -> dict:
         return dict(
@@ -88,6 +116,40 @@ class BMMAgent(Agent, ABC):
     def trigger_condition(self, uid) -> bool:
         return self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
 
+    @property
+    def measurement_origin(self):
+        return self.Cu_origin[0]
+
+    @property
+    def relative_bounds(self):
+        return self._relative_bounds
+
+    def report(self):
+        pass
+
+
+class SequentialAgent(SequentialAgentMixin, BMMAgent):
+    """
+    Hears a stop document and immediately suggests the nearest neighbor
+    Parameters
+    ----------
+    step_size : float
+        How far to step forward in the measurement. Defaults to not moving at all.
+    kwargs :
+        Necessary kwargs for BMMAgent
+    """
+
+    def __init__(self, step_size: float = 0.0, **kwargs):
+        super(SequentialAgentMixin, self).__init__(**kwargs)
+        super().__init__(step_size=step_size)
+
+
+class RandomAgent(RandomAgentMixin, BMMAgent):
+    """
+    Hears a stop document and immediately suggests a random point within the bounds.
+    Uses the same signature as SequentialAgent.
+    """
+
 
 class DumbDistanceEXAFSAgent(BMMAgent):
     """The point of this agent is to do precisely one thing: maximize the
@@ -101,8 +163,8 @@ class DumbDistanceEXAFSAgent(BMMAgent):
 
     def __init__(
         self,
-        Cu_origin: float,
-        Ti_origin: float,
+        Cu_origin: Tuple[float, float],
+        Ti_origin: Tuple[float, float],
         Cu_det_position: float,
         Ti_det_position: float,
         relative_bounds,
@@ -115,10 +177,10 @@ class DumbDistanceEXAFSAgent(BMMAgent):
         """
         Parameters
         ----------
-        Cu_origin : float
-            Decided origin of sample in raw motor coordinates.
-        Ti_origin : float
-            Decided origin of sample in raw motor coordinates.
+         Cu_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Cu measurement
+        Ti_origin : Tuple[float, float]
+            Decided origin of sample in raw motor coordinates [xafs_x, xafs_y] for Ti measurement
         Cu_det_position : float
             Absolute motor position for the xafs detector for the Cu measurement.
         Ti_det_position : float
@@ -204,7 +266,7 @@ class DumbDistanceEXAFSAgent(BMMAgent):
         dict
         """
 
-        relative_position = position - self.Cu_origin
+        relative_position = position - self.Cu_origin[0]
         self.relative_position_cache.append(relative_position)
         intensity = np.array(intensity)
         self.exafs_cache.append(intensity)
@@ -279,6 +341,3 @@ class DumbDistanceEXAFSAgent(BMMAgent):
             acq_value=[float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))],
         )
         return doc, next_points
-
-    def report(self):
-        pass
