@@ -79,4 +79,4 @@ def joint_vae_class_main(checkpoint=None):
 
 
 if __name__ == "__main__":
-    pass
+    joint_vae_class_main()
