@@ -2,11 +2,12 @@
 
 requests~=2.28.0
 nslsii
-tiled[all]
+tiled[all]==0.1.0a60
 bluesky_kafka
 databroker==2.0.0b2
-git+https://github.com/maffettone/xca@inline_training#egg=xca
+xca @ git+https://github.com/maffettone/xca@inline_training#egg=xca
 botorch
 xraylarch
 bluesky-queueserver-api
+bluesky_live
 mp-api

@@ -164,11 +164,10 @@ And on tritium for training models and deploying agents.
     - bluesky-queueserver-api
     - git+https://github.com/bluesky/bluesky-widgets@60a461659611387b18eee9b84c6a9b22c22df113
 3. Give pdf/bmm a multi-modal-madness.sh to run that activates $BS_ENV and extends the PYTHONPATH to include this overlay.
-4. Create an overlay for tritium in a local project venv using venv: :code:`python -m venv venv`
-5. :code:`pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu113 --prefix {overlay_directory} --upgrade -I --no-dependencies`
+4. Create an venv for tritium in a local project using venv: :code:`python -m venv venv; conda deactivate; source venv/bin/activate; pip install --upgrade pip`
+5. Clone and navigate to mmm-experiments repository, and :code:`pip install -e .`
+6. :code:`pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu113`
     - This is specific to tritium's needs w.r.t hardware.
-6. Clone and navigate to mmm-experiments repository, and :code:`pip install . --prefix {overlay_directory} --upgrade -I --no-dependencies`
-7. User :code:`source tritium_setup.sh`.
 
 
 
