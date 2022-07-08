@@ -223,6 +223,24 @@ class Agent(ABC):
             logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
         return doc
 
+    def _check_queue_and_start(self):
+        """
+        If the queue runs out of plans, it will stop.
+        That is, adding a plan to an empty queue will not run the plan.
+        This will not be an issue when there are many agents adding plans to a queue.
+        Giving agents the autonomy to start the queue is a risk that will be mitigated by
+        only allowing the beamline scientists to open and close the environment.
+        A queue cannot be started in a closed environment.
+        """
+        status = self.re_manager.status()
+        if (
+            status["items_in_queue"] == 1
+            and status["worker_environment_exists"] is True
+            and status["manager_state"] == "idle"
+        ):
+            self.re_manager.queue_start()
+            logging.info("Agent is starting an idle queue with exactly 1 item.")
+
     def _write_event(self, stream, doc):
         """Add event to builder as event page, and publish to catalog"""
         if stream in self.builder._streams:
@@ -263,6 +281,7 @@ class Agent(ABC):
             # Ask
             logging.debug("Issuing ask and adding to the queue.")
             doc = self._add_to_queue(1)
+            self._check_queue_and_start()
             self._write_event("ask", doc)
 
     def start(self):

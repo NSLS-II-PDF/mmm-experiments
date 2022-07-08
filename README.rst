@@ -156,7 +156,7 @@ To work this strips out the two images from the pdfstream data stream.
 Running List of Gripes/Complaints/Bugs/Suggested Improvements
 -------------------------------------------------------------
 - The way the agent inserts documents into db accesses too many private attributes.
-This is either the wrong way to do things, or the right way doesn't exist yet.
+    - This is either the wrong way to do things, or the right way doesn't exist yet.
 - Security of the queue. Agents need to be able to start the queue, but this creates a safety issue for beamline emergencies.
     - Our current strategy is that the beamline scientist controls the state of the queue-server environment.
     - The agents are then allowed to try and start/stop the queue.
