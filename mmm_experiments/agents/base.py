@@ -388,7 +388,7 @@ class DrowsyAgent(Agent, ABC):
 
     def measurement_plan_kwargs(self, point) -> dict:
         if self.counter % 2 == 0:
-            return dict(delay_kwarg=1.2)
+            return dict(delay=1.2)
         else:
             return {}
 
