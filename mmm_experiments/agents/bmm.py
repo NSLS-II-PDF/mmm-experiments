@@ -38,7 +38,7 @@ class BMMAgent(Agent, ABC):
 
     server_host = "https://qserver.nsls2.bnl.gov/bmm"
     # measurement_plan_name = "agent_move_and_measure"
-    measurement_plan_name = "agent_move_motor"
+    measurement_plan_name = "agent_change_edge"
     api_key = "zzzzz"
     sample_position_motors = ("xafs_x", "xafs_y")
 
