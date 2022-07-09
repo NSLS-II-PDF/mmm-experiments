@@ -275,7 +275,7 @@ class Agent(ABC):
             # Tell
             logging.debug("Telling agent about some new data.")
             doc = self.tell(independent_variable, dependent_variable)
-            doc["exp_uid"] = uid
+            doc["exp_uid"] = [uid]
             self._write_event("tell", doc)
 
             # Ask
