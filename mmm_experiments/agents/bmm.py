@@ -117,6 +117,7 @@ class BMMAgent(Agent, ABC):
     def trigger_condition(self, uid) -> bool:
         return (
             "XDI" in self.exp_catalog[uid].start
+            and self.start["plan_name"].startswith("scan_nd")
             and self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
         )
 
