@@ -116,7 +116,8 @@ class BMMAgent(Agent, ABC):
 
     def trigger_condition(self, uid) -> bool:
         return (
-            "XDI" in self.exp_catalog[uid].start or self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
+            "XDI" in self.exp_catalog[uid].start
+            and self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
         )
 
     @property
