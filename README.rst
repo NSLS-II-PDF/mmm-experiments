@@ -152,6 +152,24 @@ in an env where the package is installed.
 This will publish to the topic pdf.bluesky.pdfstream.documents and insert into the pdf_bluesky_sandbox databroker.
 To work this strips out the two images from the pdfstream data stream.
 
+Set up Overlays
+---------------
+We need overlays all over the place.
+On the workstations for some recent bluesky-widgets and queserver packages for queuemonitor (gui monitor).
+And on tritium for training models and deploying agents.
+
+1. create /nsls2/data/{tla}/shared/config/bluesky_overlay/multi-modal-madness
+2. pip install stuff into this prefix with no dependencies. :code:`pip install {package} --prefix {overlay_directory} --upgrade -I --no-dependencies`
+    - bluesky-queueserver
+    - bluesky-queueserver-api
+    - git+https://github.com/bluesky/bluesky-widgets@60a461659611387b18eee9b84c6a9b22c22df113
+3. Give pdf/bmm a multi-modal-madness.sh to run that activates $BS_ENV and extends the PYTHONPATH to include this overlay.
+4. Create an venv for tritium in a local project using venv: :code:`python -m venv venv; conda deactivate; source venv/bin/activate; pip install --upgrade pip`
+5. Clone and navigate to mmm-experiments repository, and :code:`pip install -e .`
+6. :code:`pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cu113`
+    - This is specific to tritium's needs w.r.t hardware.
+
+
 
 Running List of Gripes/Complaints/Bugs/Suggested Improvements
 -------------------------------------------------------------
