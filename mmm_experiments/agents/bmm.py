@@ -140,8 +140,7 @@ class SequentialAgent(SequentialAgentMixin, BMMAgent):
     """
 
     def __init__(self, step_size: float = 0.0, **kwargs):
-        super(SequentialAgentMixin, self).__init__(**kwargs)
-        super().__init__(step_size=step_size)
+        super().__init__(step_size=step_size, **kwargs)
 
 
 class RandomAgent(RandomAgentMixin, BMMAgent):
