@@ -133,9 +133,9 @@ will make the plan available. The following commands as the operator account sho
     qserver environment close
     qserver status
     qserver-list-plans-devices --startup-dir . # updates existing_plans_and_devices.yaml
+    qserver environment open
     # Check exiting plans
     qserver existing plans
-    qserver environment open
     qserver status
     # waiting for  'worker_environment_exists': True, 'worker_environment_state': 'idle'}
     # The following line is sometimes necessary...
