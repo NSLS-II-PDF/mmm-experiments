@@ -188,3 +188,4 @@ Running List of Gripes/Complaints/Bugs/Suggested Improvements
     - An emergency stop inolves pausing the current plan. Aborting the plan. Closing the environment.
 - Currently efforts have been put forward to use conditionals to avoid errors in queue/http server. In production version all exceptions including communication timeout exceptions should be properly processed, but this may work fine for this experiment.
 - Everything to run builder must be a list for event streams. Becuse everything is going through event page whether you like it or not.
+- Adding plans changes detector exposure time at PDF. This is likely a design problem with BSUI and PDF's profile.
