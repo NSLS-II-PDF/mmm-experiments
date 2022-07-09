@@ -115,7 +115,9 @@ class BMMAgent(Agent, ABC):
         )
 
     def trigger_condition(self, uid) -> bool:
-        return self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
+        return (
+            "XDI" in self.exp_catalog[uid].start or self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
+        )
 
     @property
     def measurement_origin(self):
