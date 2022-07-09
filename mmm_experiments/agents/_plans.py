@@ -158,7 +158,7 @@ def agent_move_motor(motor_x, Cu_x_position, *args, **kwargs):
 
 
 def agent_change_edge(*args, **kwargs):
-    yield from change_edge(["Cu"], focus=True)
+    yield from change_edge("Cu", focus=True)
 
 
 def agent_xafs(
