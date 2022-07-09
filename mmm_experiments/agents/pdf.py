@@ -58,7 +58,7 @@ class PDFAgent(Agent, ABC):
         metadata : dict
             Optional metadata dictionary for the agent start document
         """
-        super().__init__(beamline_tla="pdf")
+        super().__init__(beamline_tla="pdf", metadata=metadata)
         self.exp_catalog = from_profile("pdf_bluesky_sandbox")
         self.sample_origin = sample_origin
         self._relative_bounds = relative_bounds
