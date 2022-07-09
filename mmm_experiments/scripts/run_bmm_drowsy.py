@@ -5,11 +5,11 @@ from mmm_experiments.agents.bmm import DrowsyBMMAgent
 
 if __name__ == "__main__":
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     try:
         agent = DrowsyBMMAgent()
         signal.signal(signal.SIGINT, agent.signal_handler)
-        agent.start()
-    except BaseException as e:
+        agent.start(ask_at_start=True)
+    except Exception as e:
         agent.stop(exit_status="fail", reason=f"{e}")
         raise e

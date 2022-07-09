@@ -273,11 +273,13 @@ class Agent(ABC):
             self._check_queue_and_start()
             self._write_event("ask", doc)
 
-    def start(self):
+    def start(self, ask_at_start=False):
         logging.debug("Issuing start document and start listening to Kafka")
         self.builder = RunBuilder(metadata=self.metadata)
         self.agent_catalog.v1.insert("start", self.builder._cache.start_doc)
         logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
+        if ask_at_start:
+            self.ask(1)
         self.kafka_dispatcher.subscribe(self._on_stop_router)
         self.kafka_dispatcher.start()
 
