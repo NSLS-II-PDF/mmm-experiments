@@ -25,6 +25,9 @@ class DrowsyBMMAgent(DrowsyAgent):
     server_host = "https://qserver.nslsl2.bnl.gov/bmm"
     api_key = "zzzzz"
 
+    def __init__(self):
+        super().__init__(beamline_tla="bmm")
+
 
 class BMMAgent(Agent, ABC):
     """
