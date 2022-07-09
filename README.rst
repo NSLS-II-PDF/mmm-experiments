@@ -144,6 +144,11 @@ will make the plan available. The following commands as the operator account sho
     qserver allowed plans
 
 
+===================
+Launching a monitor
+===================
+- Activate overlay (<tla>_mmm.sh)
+- QSERVER_HTTP_SERVER_API_KEY=... queue-monitor --http-server-uri https://qserver.nsls2.bnl.gov/<tla>
 
 Dealing with PDF Analyzed data
 ------------------------------
