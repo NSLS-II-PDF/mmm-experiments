@@ -50,7 +50,6 @@ class BMMAgent(Agent, ABC):
         Ti_det_position: float,
         relative_bounds: Tuple[float, float],
         metadata: Optional[dict] = None,
-        restart_from_uid: Optional[str] = None,
     ):
         """
 
@@ -69,10 +68,8 @@ class BMMAgent(Agent, ABC):
             this would be something like (1, 99).
         metadata : dict
             Optional metadata dictionary for the agent start document
-        restart_from_uid : str
-            Optional uid to reload agent from previous run.
         """
-        super().__init__(beamline_tla="bmm", metadata=metadata, restart_from_uid=restart_from_uid)
+        super().__init__(beamline_tla="bmm", metadata=metadata)
         self.Cu_origin = Cu_origin
         self.Ti_origin = Ti_origin
         self.Cu_det_position = Cu_det_position

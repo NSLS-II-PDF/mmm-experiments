@@ -1,7 +1,7 @@
 from abc import ABC
 from collections import namedtuple
 from pathlib import Path
-from typing import Literal, Tuple, Union
+from typing import Literal, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -36,7 +36,13 @@ class PDFAgent(Agent, ABC):
     measurement_plan_name = "agent_sample_count"
     api_key = "yyyyy"
 
-    def __init__(self, *, sample_origin: Tuple[float, float], relative_bounds: Tuple[float, float]):
+    def __init__(
+        self,
+        *,
+        sample_origin: Tuple[float, float],
+        relative_bounds: Tuple[float, float],
+        metadata: Optional[dict] = None
+    ):
         """
         Base class for all PDF agents
 
@@ -46,6 +52,8 @@ class PDFAgent(Agent, ABC):
             Decided origin of sample in raw motor coordinates
         relative_bounds : Tuple[float, float]
             Relative bounds for the sample measurement. For a 10 cm sample, this would be something like (1, 99).
+        metadata : dict
+            Optional metadata dictionary for the agent start document
         """
         super().__init__(beamline_tla="pdf")
         self.exp_catalog = from_profile("pdf_bluesky_sandbox")
