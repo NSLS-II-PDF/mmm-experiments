@@ -24,13 +24,7 @@ class Agent(ABC):
     a catalog to write agent status to, and a manager API for the HTTP server.
     """
 
-    def __init__(
-        self,
-        *,
-        beamline_tla: str,
-        metadata: Optional[dict] = None,
-        restart_from_uid: Optional[str] = None,
-    ):
+    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None):
         logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
@@ -53,10 +47,6 @@ class Agent(ABC):
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
         self.builder = None
-        if restart_from_uid:
-            self.restart(restart_from_uid)
-        else:
-            self.start()
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
         self.re_manager.set_authorization_key(api_key=self.api_key)
 
