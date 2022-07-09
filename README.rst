@@ -25,20 +25,22 @@ pre-commit too keep your code black, flaked, and imports sorted.
     pip install -r requirements-dev.txt
     pre-commit install
 
-Proposed Package Structure
---------------------------
-- **agents**
-    - base
-    - pdf
-    - bmm
-- **data**: processing and access controls for each beamline
-    - utils
-    - pdf
-    - bmm
-- **viz**: visualization methods for data and agents
-    - utils
-    - pdf
-    - bmm
+Beamline Origins and Args
+-------------------------
+
+===
+BMM
+===
+- Origin for Ti: [155.381, 82.169].
+- Range of sample is from X=X0-30 to X0+23
+- Ti detector position for xafs_det is 20.
+- The Ti rich side is in the negative direction
+
+- Origin for Cu: [155.390, 83.96].
+- Range of sample is from X=X0-30 to X0+23
+- Cu detector position for xafs_det is 205.
+- The Ti rich side is in the negative direction
+
 
 
 Setting up Tiled Access
