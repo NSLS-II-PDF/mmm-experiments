@@ -29,8 +29,8 @@ ring_current = ...
 BStop1 = ...
 
 
-def agent_sample_count(position: float, exposure: float, *, md=None):
-    yield from bps.mv(Grid_X, position)
+def agent_sample_count(motor, position: float, exposure: float, *, md=None):
+    yield from bps.mv(motor, position)
     _md = dict(
         Grid_X=Grid_X.read(),
         Grid_Y=Grid_Y.read(),

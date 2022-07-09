@@ -73,7 +73,7 @@ class PDFAgent(Agent, ABC):
 
     def measurement_plan_args(self, x_position) -> list:
         """Plan to be writen than moves to an x_position then jogs up and down relatively in y"""
-        return [5, "Grid_X", x_position]
+        return ["Grid_X", x_position, 5]
 
     def measurement_plan_kwargs(self, point) -> dict:
         return {}
