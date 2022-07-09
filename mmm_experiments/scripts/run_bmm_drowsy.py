@@ -9,6 +9,7 @@ if __name__ == "__main__":
     try:
         agent = DrowsyBMMAgent()
         signal.signal(signal.SIGINT, agent.signal_handler)
-    except Exception as e:
+        agent.start()
+    except BaseException as e:
         agent.stop(exit_status="fail", reason=f"{e}")
         raise e

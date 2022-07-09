@@ -1,5 +1,4 @@
 import logging
-import signal
 import sys
 import uuid
 from abc import ABC, abstractmethod
@@ -335,18 +334,6 @@ class Agent(ABC):
     def signal_handler(self, signal, frame):
         self.stop(exit_status="abort", reason="forced exit ctrl+c")
         sys.exit(0)
-
-
-def example_run():
-    """Example function for running an agent."""
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    try:
-        agent = Agent(beamline_tla="tla")
-        signal.signal(signal.SIGINT, agent.signal_handler)
-    except Exception as e:
-        agent.stop(exit_status="fail", reason=f"{e}")
-        raise e
 
 
 class SequentialAgentMixin:
