@@ -29,12 +29,6 @@ ring_current = ...
 BStop1 = ...
 
 
-def useful_info():
-    this_dict = {}
-
-    return this_dict
-
-
 def agent_sample_count(position: float, exposure: float, *, md=None):
     yield from bps.mv(Grid_X, position)
     _md = dict(
