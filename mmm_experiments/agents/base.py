@@ -411,7 +411,7 @@ class DrowsyAgent(Agent, ABC):
 
     def measurement_plan_kwargs(self, point) -> dict:
         if self.counter % 2 == 0:
-            return dict(delay_kwarg=1)
+            return dict(delay_kwarg=1.2)
         else:
             return {}
 
@@ -419,7 +419,7 @@ class DrowsyAgent(Agent, ABC):
         if self.counter % 2 == 0:
             return []
         else:
-            return [1]
+            return [1.2]
 
     @staticmethod
     def unpack_run(run: databroker.client.BlueskyRun):
