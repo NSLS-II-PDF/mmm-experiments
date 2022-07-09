@@ -11,6 +11,7 @@ from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
 from databroker.client import BlueskyRun
 from gpytorch.mlls import ExactMarginalLogLikelihood
+from scipy.interpolate import interp1d
 from tiled.client import from_profile
 from xca.ml.torch.cnn import EnsembleCNN
 from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
@@ -69,7 +70,7 @@ class PDFAgent(Agent, ABC):
     @staticmethod
     def unpack_run(run: BlueskyRun):
         """"""
-        # x = np.array(run.primary.data["chi_2theta"][0]) # TODO add preprocessing step to get the binning
+        # x = np.array(run.primary.data["chi_2theta"][0])
         y = np.array(run.primary.data["chi_I"][0])
         return run.start["Grid_X"], y
 
@@ -105,6 +106,7 @@ class XCAAgent(PDFAgent):
         self,
         sample_origin: Tuple[float, float],
         model_checkpoint: Union[str, Path],
+        model_qspace: np.ndarray,
         device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         relative_bounds: Tuple[float, float],
         ucb_beta=0.1,
@@ -117,6 +119,10 @@ class XCAAgent(PDFAgent):
             Decided origin of sample in raw motor coordinates
         model_checkpoint : str, Path
             Checkpoint path for models
+        model_qspace : np.ndarray
+            The model is expecting a consistent size of diffraction data. This array will be used to
+            interpolate the experimental data, and rebin according to the model expectations.
+            e.g. np.linspace(q_min, q_max, n_points)
         device : str
             Torch device to keep models. This is where both Deep and GP models will be stored.
         relative_bounds : Tuple[float, float]
@@ -125,6 +131,7 @@ class XCAAgent(PDFAgent):
             Value for exporative weighting in upper confidence bound acquisition function
         """
         super().__init__(sample_origin=sample_origin, relative_bounds=relative_bounds)
+        self.q_space = model_qspace
         self.checkpoint = torch.load(str(model_checkpoint))
         self.device = torch.device(device)
         self.bounds = torch.tensor(relative_bounds).to(self.device)
@@ -136,6 +143,15 @@ class XCAAgent(PDFAgent):
         self.position_cache = []
         self.representation_cache = []
         self.beta = ucb_beta
+
+    def unpack_run(self, run: BlueskyRun):
+        """Interpolates intensity onto the standard Q space."""
+        x = np.array(run.primary.data["chi_Q"][0])
+        y = np.array(run.primary.data["chi_I"][0])
+        f = interp1d(x, y, fill_value=0.0)
+        spectra = f(self.q_space)
+        spectra = (spectra - np.min(spectra)) / (np.max(spectra) - np.min(spectra))
+        return run.start["Grid_X"], spectra
 
     def tell(self, position, intensity):
         """
