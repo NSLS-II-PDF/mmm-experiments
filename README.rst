@@ -161,7 +161,7 @@ On the workstations for some recent bluesky-widgets and queserver packages for q
 And on tritium for training models and deploying agents.
 
 1. create /nsls2/data/{tla}/shared/config/bluesky_overlay/multi-modal-madness
-2. pip install stuff into this prefix with no dependencies. :code:`pip install {package} --prefix {overlay_directory} --upgrade -I --no-dependencies`
+2. pip install stuff into this prefix with no dependencies. :code:`pip install {package} --prefix {overlay_directory} --upgrade -I --no-dependencies --no-build-isolation`
     - bluesky-queueserver
     - bluesky-queueserver-api
     - git+https://github.com/bluesky/bluesky-widgets@60a461659611387b18eee9b84c6a9b22c22df113
