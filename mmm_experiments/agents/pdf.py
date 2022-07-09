@@ -27,12 +27,12 @@ class DrowsyPDFAgent(DrowsyAgent):
     Alternates sending args vs kwargs to do the same thing.
     """
 
-    server_host = "https://qserver.nslsl2.bnl.gov/pdf"
+    server_host = "https://qserver.nsls2.bnl.gov/pdf"
     api_key = "yyyyy"
 
 
 class PDFAgent(Agent, ABC):
-    server_host = "https://qserver.nslsl2.bnl.gov/pdf"
+    server_host = "https://qserver.nsls2.bnl.gov/pdf"
     measurement_plan_name = "agent_sample_count"
     api_key = "yyyyy"
 

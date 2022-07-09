@@ -22,7 +22,7 @@ class DrowsyBMMAgent(DrowsyAgent):
     Alternates sending args vs kwargs to do the same thing.
     """
 
-    server_host = "https://qserver.nslsl2.bnl.gov/bmm"
+    server_host = "https://qserver.nsls2.bnl.gov/bmm"
     api_key = "zzzzz"
 
     def __init__(self):
@@ -36,7 +36,7 @@ class BMMAgent(Agent, ABC):
     The agent will by default only consider the data from the Cu K-edge measurement.
     """
 
-    server_host = "https://qserver.nslsl2.bnl.gov/bmm"
+    server_host = "https://qserver.nsls2.bnl.gov/bmm"
     measurement_plan_name = "agent_move_and_measure"
     api_key = "zzzzz"
     sample_position_motors = ("xafs_x", "xafs_y")
