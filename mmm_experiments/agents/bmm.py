@@ -84,7 +84,7 @@ class BMMAgent(Agent, ABC):
         run_preprocessor.fetch(run, mode="fluorescence")
         # x_data = run_preprocessor.group.k
         y_data = run_preprocessor.group.chi
-        md = ast.literal_eval(run.start["XDI"]["_comment"])
+        md = ast.literal_eval(run.start["XDI"]["_comment"][0])
         return md["Cu_position"], y_data
 
     def measurement_plan_args(self, point):
