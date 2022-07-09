@@ -279,7 +279,8 @@ class Agent(ABC):
         self.agent_catalog.v1.insert("start", self.builder._cache.start_doc)
         logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
         if ask_at_start:
-            self.ask(1)
+            self._add_to_queue(1)
+            self._check_queue_and_start()
         self.kafka_dispatcher.subscribe(self._on_stop_router)
         self.kafka_dispatcher.start()
 
@@ -350,14 +351,14 @@ class SequentialAgentMixin:
     def tell(self, position, y) -> dict:
         relative_position = position - self.measurement_origin
         self.independent_cache.append(relative_position)
-        return dict(position=position, rel_position=relative_position, cache_len=len(self.independent_cache))
+        return dict(position=[position], rel_position=[relative_position], cache_len=[len(self.independent_cache)])
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
         last = self.independent_cache[-1]
         point = last + self.step_size
         if point > self.relative_max:
             point = self.relative_min
-        doc = dict(last_point=last, next_point=point)
+        doc = dict(last_point=[last], next_point=[point])
         return doc, [point]
 
 
@@ -372,7 +373,7 @@ class RandomAgentMixin:
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
         point = np.random.uniform(*self.relative_bounds)
-        doc = dict(next_point=point)
+        doc = dict(next_point=[point])
         return doc, [point]
 
 
