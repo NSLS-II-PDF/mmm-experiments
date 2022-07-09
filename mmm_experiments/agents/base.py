@@ -432,3 +432,9 @@ class DrowsyAgent(Agent, ABC):
 
     def report(self):
         pass
+
+    def measurement_origin(self):
+        pass
+
+    def relative_bounds(self):
+        pass
