@@ -421,6 +421,7 @@ class DrowsyAgent(Agent, ABC):
         else:
             return [1]
 
+    @staticmethod
     def unpack_run(run: databroker.client.BlueskyRun):
         return 0.0, 0.0
 
