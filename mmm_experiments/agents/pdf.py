@@ -30,6 +30,9 @@ class DrowsyPDFAgent(DrowsyAgent):
     server_host = "https://qserver.nsls2.bnl.gov/pdf"
     api_key = "yyyyy"
 
+    def __init__(self):
+        super().__init__(beamline_tla="pdf")
+
 
 class PDFAgent(Agent, ABC):
     server_host = "https://qserver.nsls2.bnl.gov/pdf"
