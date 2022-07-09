@@ -177,7 +177,7 @@ def agent_xafs(
     _md = dict(Cu_position=motor_x.position)
     _md["Cu_det_position"] = xafs_det.position
     _md.update(md or {})
-    yield from xafs(element="Cu", snapshots=False, **kwargs)
+    yield from xafs(element="Cu", **kwargs)
 
 
 # ================================== BBB SPECIFIC PLANS =================================== #

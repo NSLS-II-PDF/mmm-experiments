@@ -190,3 +190,5 @@ Running List of Gripes/Complaints/Bugs/Suggested Improvements
 - Everything to run builder must be a list for event streams. Becuse everything is going through event page whether you like it or not.
 - Adding plans changes detector exposure time at PDF. This is likely a design problem with BSUI and PDF's profile.
 - The operator account's home directory is not shared between the srv1 VM and the workstations. This was an issue for BMM's plans that reference a file in the home dir.
+    - Bruce's scheme for knowing where to write data was not working on a fresh machine that had never seen the BMMuser.start_experiment() command run by hand in bsui
+

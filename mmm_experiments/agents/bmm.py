@@ -112,6 +112,7 @@ class BMMAgent(Agent, ABC):
             bounds="-200 -30 -10 25 12k",
             steps="10 2 0.3 0.05k",
             times="0.5 0.5 0.5 0.5",
+            snapshots=False,
         )
 
     def trigger_condition(self, uid) -> bool:
