@@ -423,7 +423,7 @@ class DrowsyAgent(Agent, ABC):
 
     @staticmethod
     def unpack_run(run: databroker.client.BlueskyRun):
-        return 0.0, 0.0
+        return [0.0], [0.0]
 
     def tell(self, x, y) -> dict:
         return dict(x=x, y=y)
