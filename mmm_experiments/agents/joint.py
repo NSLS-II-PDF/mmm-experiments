@@ -227,6 +227,8 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
                 r = self.subject_manager.item_add(plan, pos="front")
                 logging.info(f"Sent subject http-server request for point {point}\n." f"Received reponse: {r}")
 
+        return doc, points
+
 
 class SequentialMonarchPDF(SequentialAgentMixin, MonarchSubjectBase, PDFAgent):
     # FOR BMM
