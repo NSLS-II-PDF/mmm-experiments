@@ -383,11 +383,19 @@ class GeometricResolutionMixin(SequentialAgentMixin):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.points_per_batch = 3
+        self.points_per_batch = 0
         self.independent_cache = []
         self.acumulated_stops = 0
+        self.first_ask = True
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        if self.first_ask:
+            self.first_ask = False
+            points = [self.relative_min, (self.relative_max - self.relative_min) / 2, self.relative_max]
+            doc = dict(ask_ready=[True], size_of_batch=[len(points)], proposal=[points])
+            self.points_per_batch = 3
+            return doc, points
+
         self.acumulated_stops += 1
         if self.acumulated_stops == self.points_per_batch:
             # 3 then 2 then geometric expansion
