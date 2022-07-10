@@ -13,7 +13,7 @@ if __name__ == "__main__":
             Cu_det_position=205,
             Ti_det_position=20,
             relative_bounds=(-30, 23),
-            pdf_origin=(70.0, 2.0),
+            pdf_origin=(69.2, 2.0),
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.start(ask_at_start=True)
