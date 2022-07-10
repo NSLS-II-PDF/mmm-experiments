@@ -199,13 +199,13 @@ class XCAAgent(PDFAgent):
         self.representation_cache.append(Representation(prediction_prob, shannon, loss))
 
         doc = dict(
-            position=position,
-            rel_position=rel_position,
-            intensity=intensity,
-            prediction_prob=prediction_prob.to("cpu").numpy(),
-            reconstruction=x.to("cpu").numpy(),
-            shannon=float(shannon.to("cpu")),
-            loss=float(loss.to("cpu")),
+            position=[position],
+            rel_position=[rel_position],
+            intensity=[intensity],
+            prediction_prob=[prediction_prob.to("cpu").numpy()],
+            reconstruction=[x.to("cpu").numpy()],
+            shannon=[float(shannon.to("cpu"))],
+            loss=[float(loss.to("cpu"))],
         )
         return doc
 
@@ -252,9 +252,11 @@ class XCAAgent(PDFAgent):
             next_points = [float(x.to("cpu")) for x in next_points]
 
         doc = dict(
-            batch_size=batch_size,
-            next_points=next_points,
-            ucb_beta=self.beta,
-            acq_value=[float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))],
+            batch_size=[batch_size],
+            next_points=[next_points],
+            ucb_beta=[self.beta],
+            acq_value=[
+                [float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))]
+            ],
         )
         return doc, next_points
