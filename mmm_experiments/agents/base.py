@@ -418,7 +418,7 @@ class GeometricResolutionMixin(SequentialAgentMixin):
         status = self.re_manager.status(reload=True)
         if status["worker_environment_exists"] is True and status["manager_state"] == "idle":
             self.re_manager.queue_start()
-            logging.info("Agent is starting an idle queue with exactly 1 item.")
+            logging.info("Agent is starting an idle queue.")
 
 
 class RandomAgentMixin:
