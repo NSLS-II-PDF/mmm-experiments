@@ -84,11 +84,13 @@ class Agent(ABC):
         """String name of registered plan"""
         ...
 
+    @staticmethod
     @abstractmethod
     def measurement_plan_args(self, point) -> list:
         """List of arguments to pass to plan from a point to measure."""
         ...
 
+    @staticmethod
     @abstractmethod
     def measurement_plan_kwargs(self, point) -> dict:
         """Construct dictionary of keyword arguments to pass the plan, from a point to measure."""
@@ -360,6 +362,36 @@ class SequentialAgentMixin:
             point = self.relative_min
         doc = dict(last_point=[last], next_point=[point])
         return doc, [point]
+
+
+class GeometricResolutionMixin(SequentialAgentMixin):
+    """
+    Mixin to be used with Agent children.
+    Performs a gridsearch with increasing resolution
+    Uses `tell` method of SequentialAgentMixin
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.points_per_batch = 3
+        self.independent_cache = []
+        self.acumulated_stops = 0
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        self.acumulated_stops += 1
+        if self.acumulated_stops == self.points_per_batch:
+            # 3 then 2 then geometric expansion
+            self.acumulated_stops = 0
+            self.independent_cache = sorted(self.independent_cache)
+            points = []
+            for i in range(len(self.independent_cache)):
+                points.append((self.independent_cache[i + 1] - self.independent_cache[i]) / 2)
+            self.points_per_batch = len(points)
+            doc = dict(ask_ready=[True], size_of_batch=[len(points)], proposal=[points])
+        else:
+            doc = dict(ask_ready=[False], size_of_batch=[0], proposal=[None])
+            points = []
+        return doc, points
 
 
 class RandomAgentMixin:
