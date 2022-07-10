@@ -83,7 +83,7 @@ class PDFAgent(Agent, ABC):
         """"""
         # x = np.array(run.primary.data["chi_2theta"][0])
         y = np.array(run.primary.data["chi_I"][0])
-        return run.start["Grid_X"], y
+        return run.start["Grid_X"]["Grid_X"]["value"], y
 
     def report(self):
         pass
