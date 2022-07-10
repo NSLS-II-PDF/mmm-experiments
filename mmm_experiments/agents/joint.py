@@ -142,9 +142,13 @@ class SequentialMonarchPDF(SequentialAgentMixin, MonarchSubjectBase, PDFAgent):
         and the Monarch will get the points added after the ask.
         """
         doc, points = super().ask(batch_size)
+        doc["bmm_proposed_points"] = []
         for i in range(len(points)):
             point = self.bmm_cache[-1] + self.step_size
+            if point > self.bmm_bounds[1]:
+                point = self.bmm_bounds[0]
             self.bmm_cache.append(point)
+            doc["bmm_proposed_points"].append(point)
             plan = BPlan(self.subject_plan_name, *self.subject_plan_args(point), **self.subject_plan_kwargs(point))
             r = self.subject_manager.item_add(plan, pos="front")
             logging.info(f"Sent BMM http-server priority request for point {point}\n." f"Received reponse: {r}")
