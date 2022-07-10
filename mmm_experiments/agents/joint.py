@@ -95,7 +95,10 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
         return BMMAgent.measurement_plan_args(self, point)
 
     def subject_plan_kwargs(self, point) -> dict:
-        return BMMAgent.measurement_plan_kwargs(self, point)
+        kwargs = BMMAgent.measurement_plan_kwargs(self, point)
+        kwargs.setdefault("md", {})
+        kwargs["md"]["agent"] = "MonarchPDFSubjectBMM"
+        return kwargs
 
     def get_wafer_background(self):
         background_runs = self.exp_catalog.search({"sample_name": "MT_wafer5"}).values_indexer[4:]
@@ -164,8 +167,9 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
     subject_plan_name = PDFAgent.measurement_plan_name
 
     def __init__(self, pdf_origin: Tuple[float, float], **kwargs):
-        self.pdf_origin = pdf_origin
         super().__init__(**kwargs)
+        self.pdf_origin = pdf_origin
+        self.dependent_cache = []
 
     @property
     def subject_origin(self):
@@ -177,9 +181,20 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
     def subject_plan_kwargs(self, point) -> dict:
         return {}
 
+    def measurement_plan_kwargs(self, point) -> dict:
+        kwargs = super().measurement_plan_kwargs(point)
+        kwargs.setdefault("md", {})
+        kwargs["md"]["agent"] = "MonarchBMMSubjectPDF"
+        return kwargs
+
     def generate_subject_ask(self) -> list:
         """This is where the clever happens"""
         raise NotImplementedError
+
+    def tell(self, position, y):
+        doc = super().tell(position, y)
+        self.dependent_cache.append(y.data)
+        return doc
 
     def ask(self, batch_size: int = 1):
         """Standard Geometric ask, Then add plans to subject"""
