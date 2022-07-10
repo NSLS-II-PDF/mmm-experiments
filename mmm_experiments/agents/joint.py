@@ -1,9 +1,13 @@
 import logging
+import time
 from abc import ABC, abstractmethod
 from typing import Tuple
 
+import numpy as np
+import xarray
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http import REManagerAPI
+from sklearn.decomposition import NMF
 
 from .base import GeometricResolutionMixin, SequentialAgentMixin
 from .bmm import BMMAgent
@@ -54,10 +58,104 @@ class MonarchSubjectBase(ABC):
         """Distinctly useful for having twinned samples and mixin classes. The origin of independent variable."""
 
 
-# TODO: add the right mixin for PDF. Could be sequential, or maybe another geometic
-class MonarchPDFSubjectTLA(SequentialAgentMixin, MonarchSubjectBase, PDFAgent):
-    def __init__(self):
-        raise NotImplementedError
+class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgent):
+    subject_host = BMMAgent.server_host
+    subject_api_key = BMMAgent.api_key
+    subject_plan_name = BMMAgent.measurement_plan_name
+
+    def __init__(
+        self,
+        *,
+        Cu_origin: Tuple[float, float],
+        Ti_origin: Tuple[float, float],
+        Cu_det_position: float,
+        Ti_det_position: float,
+        bmm_bounds: Tuple[float, float],
+        bmm_time_window: float = 30,  # Time in minutes
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.sample_position_motors = ("xafs_x", "xafs_y")
+        self.Cu_origin = Cu_origin
+        self.Ti_origin = Ti_origin
+        self.Cu_det_position = Cu_det_position
+        self.Ti_det_position = Ti_det_position
+        self.bmm_bounds = bmm_bounds
+        self.bmm_request_cache = set()
+        self.bmm_time_window = bmm_time_window
+        self.bmm_last_request = time.time()
+        self.background = self.get_wafer_background()
+        self.dependent_cache = []
+
+    @property
+    def subject_origin(self):
+        return self.Cu_origin[0]
+
+    def subject_plan_args(self, point):
+        return BMMAgent.measurement_plan_args(self, point)
+
+    def subject_plan_kwargs(self, point) -> dict:
+        return BMMAgent.measurement_plan_kwargs(self, point)
+
+    def get_wafer_background(self):
+        background_runs = self.exp_catalog.search({"sample_name": "MT_wafer5"}).values_indexer[4:]
+        background_stack = xarray.concat((r.primary.read(["chi_Q", "chi_I"]) for r in background_runs), dim="time")
+        background = background_stack.mean(dim="time")
+        return background
+
+    @staticmethod
+    def bkg_scaler(x, y, bkg, qmin=1, qmax=2):
+        fgd_sum = np.sum(y[(x > qmin) & (x < qmax)])
+        bgd_sum = np.sum(bkg["chi_I"][(bkg["chi_Q"] > qmin) & (bkg["chi_Q"] < qmax)])
+        return fgd_sum / bgd_sum
+
+    def unpack_run(self, run):
+        """Interpolates intensity onto the standard Q space."""
+        x = run.primary.data["chi_Q"][0]
+        y = run.primary.data["chi_I"][0]
+        scaler = self.bkg_scaler(x, y, self.background)
+        y -= scaler * self.background["chi_I"]
+        y = (y - y.min) / (y.max() - y.min())
+        return run.start["Grid_X"]["Grid_X"]["value"], y
+
+    def generate_subject_ask(self) -> list:
+        """This is where the clever happens"""
+        data = np.stack(self.dependent_cache)
+        nmf = NMF(3)
+        nmf.fit(data)
+        components = nmf.components_
+        nearest = []  # nearest indices to the derived components (MSE)
+        for c in components:
+            nearest.append(np.argmin(np.mean((data - c) ** 2, axis=-1)))
+        return [self.independent_cache[i] for i in nearest]
+
+    def tell(self, position, y):
+        doc = super().tell(position, y)
+        self.dependent_cache.append(y.data)
+        return doc
+
+    def ask(self, batch_size: int = 1):
+        """Standard ask, Then checks time and adds plans to subject"""
+        doc, points = super().ask(batch_size)
+        if time.time() - self.bmm_last_request > self.bmm_time_window * 60:
+            logging.info("Enough time elapsed. Generating new points to send to BMM.")
+            subject_points = self.generate_subject_ask()
+            for point in subject_points:
+                if point in self.bmm_request_cache:
+                    logging.info(f"Point {point} already measured by BMM. Skipping...")
+                plan = BPlan(
+                    self.subject_plan_name, *self.subject_plan_args(point), **self.subject_plan_kwargs(point)
+                )
+                r = self.subject_manager.item_add(plan, pos="front")
+                logging.info(
+                    f"Sent BMM http-server priority request for point {point}\n. " f"Received reponse: {r}"
+                )
+                if r["success"] is True:
+                    self.bmm_request_cache.add(point)
+            doc["subject_points"] = [subject_points]
+        else:
+            doc["subject_points"] = []
+        return doc, points
 
 
 class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgent):
@@ -100,12 +198,10 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
 
 
 class SequentialMonarchPDF(SequentialAgentMixin, MonarchSubjectBase, PDFAgent):
-    """"""
-
+    # FOR BMM
     subject_host = BMMAgent.server_host
     subject_api_key = BMMAgent.api_key
     subject_plan_name = BMMAgent.measurement_plan_name
-    # FOR BMM
 
     def __init__(
         self,
