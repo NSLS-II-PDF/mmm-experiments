@@ -423,7 +423,7 @@ class GeometricResolutionMixin(SequentialAgentMixin):
                 proposal=points,
             )
         else:
-            doc = dict(ask_ready=[False], acummulated_stops=[self.acumulated_stops], proposal=[])
+            doc = dict(ask_ready=[False], acummulated_stops=[self.acumulated_stops], proposal=[0.0])
             points = []
         return doc, points
 
