@@ -144,6 +144,9 @@ will make the plan available. The following commands as the operator account sho
     qserver allowed plans
 
 
+If only the contents of a plan change, but not the signature of the plan itself,
+the environement only needs to be closed and re-opened. This saves some time when gently tweaking plans.
+
 ===================
 Launching a monitor
 ===================
@@ -193,5 +196,5 @@ Running List of Gripes/Complaints/Bugs/Suggested Improvements
     - Bruce's scheme for knowing where to write data was not working on a fresh machine that had never seen the BMMuser.start_experiment() command run by hand in bsui
     - Bruce has a spreadsheet that doesn't get cleared effectively after other experiments, and the plan will look for something that doesn't exist because the "instrument" argument was set.
     - There was also cross talk of state between files and redis, so clearing one could sometimes have no effect.
-
+- We need a helper in queueserver to get into an ipython shell and poke around, or an ipython kernel from that namespace. This would have helped with debugging the above (which took hours...).
 

@@ -8,7 +8,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     try:
         agent = SequentialAgent(
-            1.0,
+            1.7,
             Cu_origin=(155.390, 83.96),
             Ti_origin=(155.381, 82.169),
             Cu_det_position=205,
