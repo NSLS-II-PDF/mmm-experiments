@@ -251,7 +251,7 @@ class Agent(ABC):
         except Exception as e:  # noqa: E722 # TODO remove
             print(doc, e)
             raise e
-        self.agent_catalog.v1.insert(*self.builder._cache._ordered[-100000.0])
+        self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
 
     @staticmethod
     def trigger_condition(uid) -> bool:
@@ -423,7 +423,7 @@ class GeometricResolutionMixin(SequentialAgentMixin):
                 proposal=points,
             )
         else:
-            doc = dict(ask_ready=[False], acummulated_stops=[self.acumulated_stops], proposal=[0.0])
+            doc = dict(ask_ready=[False], acummulated_stops=[self.acumulated_stops], proposal=[-10000.0])
             points = []
         return doc, points
 
