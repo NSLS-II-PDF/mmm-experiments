@@ -88,7 +88,8 @@ class BMMAgent(Agent, ABC):
         return md["Cu_position"], y_data
 
     def measurement_plan_args(self, point):
-        """List of arguments to pass to plan"""
+        """List of arguments to pass to plan.
+        BMM agents are relative to Cu origin, but separate origins are needed for other element edges."""
         return (
             self.sample_position_motors[0],
             self.Cu_origin[0] + point,
