@@ -198,4 +198,5 @@ Running List of Gripes/Complaints/Bugs/Suggested Improvements
     - There was also cross talk of state between files and redis, so clearing one could sometimes have no effect.
 - We need a helper in queueserver to get into an ipython shell and poke around, or an ipython kernel from that namespace. This would have helped with debugging the above (which took hours...).
 - Starting up bsui or qserver env can change the detector frame-rate at PDF which can confuse existing bsui sessions. This is a problem with state management at PDF.
+- Nohuped agents should be killed with signit. `kill -s SIGINT <PID>`
 
