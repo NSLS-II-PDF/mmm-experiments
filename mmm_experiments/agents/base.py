@@ -242,11 +242,14 @@ class Agent(ABC):
         """Add event to builder as event page, and publish to catalog"""
         if not doc:
             return
-        if stream in self.builder._streams:
-            self.builder.add_data(stream, data=doc)
-        else:
-            self.builder.add_stream(stream, data=doc)
-            self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
+        try:
+            if stream in self.builder._streams:
+                self.builder.add_data(stream, data=doc)
+            else:
+                self.builder.add_stream(stream, data=doc)
+                self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
+        except:  # noqa: E722
+            print(doc)
         self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
 
     @staticmethod
