@@ -119,7 +119,7 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
         x = run.primary.data["chi_Q"][0]
         y = run.primary.data["chi_I"][0]
         scaler = self.bkg_scaler(x, y, self.background)
-        y -= scaler * self.background["chi_I"]
+        y = np.array(y) - float(scaler) * np.array(self.background["chi_I"])
         y = (y - y.min) / (y.max() - y.min())
         return run.start["Grid_X"]["Grid_X"]["value"], y
 
