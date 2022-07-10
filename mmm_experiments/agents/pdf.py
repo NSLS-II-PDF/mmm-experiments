@@ -161,7 +161,7 @@ class XCAAgent(PDFAgent):
         f = interp1d(x, y, fill_value=0.0)
         spectra = f(self.q_space)
         spectra = (spectra - np.min(spectra)) / (np.max(spectra) - np.min(spectra))
-        return run.start["Grid_X"], spectra
+        return run.start["Grid_X"]["Grid_X"]["value"], spectra
 
     def tell(self, position, intensity):
         """
