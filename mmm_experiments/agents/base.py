@@ -87,13 +87,19 @@ class Agent(ABC):
     @staticmethod
     @abstractmethod
     def measurement_plan_args(point) -> list:
-        """List of arguments to pass to plan from a point to measure."""
+        """
+        List of arguments to pass to plan from a point to measure.
+        This is a good place to transform relative into absolute motor coords.
+        """
         ...
 
     @staticmethod
     @abstractmethod
     def measurement_plan_kwargs(point) -> dict:
-        """Construct dictionary of keyword arguments to pass the plan, from a point to measure."""
+        """
+        Construct dictionary of keyword arguments to pass the plan, from a point to measure.
+        This is a good place to transform relative into absolute motor coords.
+        """
         ...
 
     @staticmethod
