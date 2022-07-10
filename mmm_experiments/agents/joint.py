@@ -154,8 +154,8 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
             subject_points = self.generate_subject_ask()
             for point in subject_points:
                 if point > self.bmm_bounds[1]:
-                    point = self.bmm_bounds[0] + (point - self.bmm_bounds[1])
                     logging.info(f"Point {point} beyond BMM bounds, cycling to other end.")
+                    point = self.bmm_bounds[0] + (point - self.bmm_bounds[1])
                 if point in self.bmm_request_cache:
                     logging.info(f"Point {point} already measured by BMM. Skipping...")
                     continue
