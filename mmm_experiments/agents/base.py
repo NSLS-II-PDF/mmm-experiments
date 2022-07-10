@@ -248,8 +248,8 @@ class Agent(ABC):
             else:
                 self.builder.add_stream(stream, data=doc)
                 self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
-        except:  # noqa: E722
-            print(doc)
+        except Exception as e:  # noqa: E722 # TODO remove
+            print(doc, e)
         self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
 
     @staticmethod
