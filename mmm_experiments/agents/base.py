@@ -240,6 +240,8 @@ class Agent(ABC):
 
     def _write_event(self, stream, doc):
         """Add event to builder as event page, and publish to catalog"""
+        if not doc:
+            return
         if stream in self.builder._streams:
             self.builder.add_data(stream, data=doc)
         else:
