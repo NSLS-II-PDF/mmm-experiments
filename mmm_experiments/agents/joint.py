@@ -189,15 +189,10 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
         return ["Grid_X", point + self.subject_origin, 30]
 
     def subject_plan_kwargs(self, point) -> dict:
-        return {"sample_number": 15}  # TODO updated number
+        return {"sample_number": 17}
 
     def measurement_plan_kwargs(self, point) -> dict:
         kwargs = super().measurement_plan_kwargs(point)
-        # TODO : REMOVE AFTER TESTING
-        kwargs["bounds"] = "-30 30"
-        kwargs["steps"] = "0.5"
-        kwargs["times"] = "0.5"
-        # TODO: REMOVE AFTER TESTING!
         kwargs.setdefault("md", {})
         kwargs["md"]["agent"] = "MonarchBMMSubjectPDF"
         return kwargs

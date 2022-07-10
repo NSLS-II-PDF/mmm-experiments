@@ -82,7 +82,7 @@ class PDFAgent(Agent, ABC):
         return ["Grid_X", x_position + self.measurement_origin, 30]
 
     def measurement_plan_kwargs(self, point) -> dict:
-        return {"sample_number": 15}  # TODO updated number
+        return {"sample_number": 16}
 
     @staticmethod
     def unpack_run(run: BlueskyRun):

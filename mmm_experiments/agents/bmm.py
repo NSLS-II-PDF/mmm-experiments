@@ -103,7 +103,7 @@ class BMMAgent(Agent, ABC):
         return dict(
             Cu_det_position=self.Cu_det_position,
             Ti_det_position=self.Ti_det_position,
-            filename="MultimodalMadness",
+            filename="MultimodalMadnessSundayProd",
             nscans=1,
             start="next",
             mode="fluorescence",
