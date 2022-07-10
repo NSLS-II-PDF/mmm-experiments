@@ -86,13 +86,13 @@ class Agent(ABC):
 
     @staticmethod
     @abstractmethod
-    def measurement_plan_args(self, point) -> list:
+    def measurement_plan_args(point) -> list:
         """List of arguments to pass to plan from a point to measure."""
         ...
 
     @staticmethod
     @abstractmethod
-    def measurement_plan_kwargs(self, point) -> dict:
+    def measurement_plan_kwargs(point) -> dict:
         """Construct dictionary of keyword arguments to pass the plan, from a point to measure."""
         ...
 
