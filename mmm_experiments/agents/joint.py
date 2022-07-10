@@ -193,6 +193,11 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
 
     def measurement_plan_kwargs(self, point) -> dict:
         kwargs = super().measurement_plan_kwargs(point)
+        # TODO : REMOVE AFTER TESTING
+        kwargs["bounds"] = "-30 30"
+        kwargs["steps"] = "0.5"
+        kwargs["times"] = "0.5"
+        # TODO: REMOVE AFTER TESTING!
         kwargs.setdefault("md", {})
         kwargs["md"]["agent"] = "MonarchBMMSubjectPDF"
         return kwargs
