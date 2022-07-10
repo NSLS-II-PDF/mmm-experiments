@@ -189,7 +189,7 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
         return self.pdf_origin[0]
 
     def subject_plan_args(self, point):
-        return ["Grid_X", point + self.subject_origin, 5]
+        return ["Grid_X", point + self.subject_origin, 30]
 
     def subject_plan_kwargs(self, point) -> dict:
         return {}
