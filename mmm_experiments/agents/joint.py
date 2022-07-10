@@ -189,7 +189,7 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
         return ["Grid_X", point + self.subject_origin, 30]
 
     def subject_plan_kwargs(self, point) -> dict:
-        return {}
+        return {"sample_number": 15}  # TODO updated number
 
     def measurement_plan_kwargs(self, point) -> dict:
         kwargs = super().measurement_plan_kwargs(point)
@@ -206,7 +206,7 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
         """BMM asks PDF to measure it's most distinct signal. Construct distance matrix and sum"""
         data = np.stack(self.dependent_cache)
         dists = -2 * np.dot(data, data.T) + np.sum(data ** 2, axis=1) + np.sum(data ** 2, axis=1)[:, np.newaxis]
-        return [np.argmax(np.sum(dists, axis=-1))]
+        return [self.independent_cache[np.argmax(np.sum(dists, axis=-1))]]
 
     def tell(self, position, y):
         doc = super().tell(position, y)
