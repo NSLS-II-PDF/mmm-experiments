@@ -168,9 +168,6 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
                 )
                 if r["success"] is True:
                     self.bmm_request_cache.add(point)
-            doc["subject_points"] = [subject_points]
-        else:
-            doc["subject_points"] = []
         return doc, points
 
 
