@@ -197,4 +197,5 @@ Running List of Gripes/Complaints/Bugs/Suggested Improvements
     - Bruce has a spreadsheet that doesn't get cleared effectively after other experiments, and the plan will look for something that doesn't exist because the "instrument" argument was set.
     - There was also cross talk of state between files and redis, so clearing one could sometimes have no effect.
 - We need a helper in queueserver to get into an ipython shell and poke around, or an ipython kernel from that namespace. This would have helped with debugging the above (which took hours...).
+- Starting up bsui or qserver env can change the detector frame-rate at PDF which can confuse existing bsui sessions. This is a problem with state management at PDF.
 
