@@ -8,7 +8,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     try:
         agent = MonarchPDFSubjectBMM(
-            sample_origin=(70.0, 2.0),
+            sample_origin=(69.2, 2.0),
             relative_bounds=(-30, 30),
             Cu_origin=(155.390, 83.96),
             Ti_origin=(155.381, 82.169),

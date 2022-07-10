@@ -411,6 +411,15 @@ class GeometricResolutionMixin(SequentialAgentMixin):
             points = []
         return doc, points
 
+    def _check_queue_and_start(self):
+        """
+        Override the exaclty 1 rule and always start the queue if its idle and I just added plans.
+        """
+        status = self.re_manager.status(reload=True)
+        if status["worker_environment_exists"] is True and status["manager_state"] == "idle":
+            self.re_manager.queue_start()
+            logging.info("Agent is starting an idle queue with exactly 1 item.")
+
 
 class RandomAgentMixin:
     """

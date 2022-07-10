@@ -8,7 +8,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     try:
         agent = GeometricAgent(
-            sample_origin=(70.0, 2.0),
+            sample_origin=(69.2, 2.0),
             relative_bounds=(-30, 30),
             metadata={"Yogurt": 1, "Froyo": 52},
         )
