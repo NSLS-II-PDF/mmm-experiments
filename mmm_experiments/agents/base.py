@@ -407,7 +407,7 @@ class GeometricResolutionMixin(SequentialAgentMixin):
             self.points_per_batch = len(points)
             doc = dict(ask_ready=[True], size_of_batch=[len(points)], proposal=[points])
         else:
-            doc = dict(ask_ready=[False], size_of_batch=[0], proposal=[None])
+            doc = dict(ask_ready=[False], size_of_batch=[0], proposal=[[]])
             points = []
         return doc, points
 
