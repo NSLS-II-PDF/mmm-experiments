@@ -153,12 +153,12 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
             logging.info("Enough time elapsed. Generating new points to send to BMM.")
             subject_points = self.generate_subject_ask()
             for point in subject_points:
-                if point in self.bmm_request_cache:
-                    logging.info(f"Point {point} already measured by BMM. Skipping...")
-                    continue
                 if point > self.bmm_bounds[1]:
                     point = self.bmm_bounds[0] + (point - self.bmm_bounds[1])
                     logging.info(f"Point {point} beyond BMM bounds, cycling to other end.")
+                if point in self.bmm_request_cache:
+                    logging.info(f"Point {point} already measured by BMM. Skipping...")
+                    continue
                 plan = BPlan(
                     self.subject_plan_name, *self.subject_plan_args(point), **self.subject_plan_kwargs(point)
                 )
@@ -221,7 +221,6 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
                 )
                 r = self.subject_manager.item_add(plan, pos="front")
                 logging.info(f"Sent subject http-server request for point {point}\n." f"Received reponse: {r}")
-            doc["subject_points"] = [subject_points]
 
 
 class SequentialMonarchPDF(SequentialAgentMixin, MonarchSubjectBase, PDFAgent):
