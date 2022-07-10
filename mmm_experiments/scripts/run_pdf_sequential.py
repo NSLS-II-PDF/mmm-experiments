@@ -9,7 +9,7 @@ if __name__ == "__main__":
     try:
         agent = SequentialAgent(
             1.0,
-            sample_origin=(70.0),
+            sample_origin=(70.0, 2.0),
             relative_bounds=(-30, 30),
             metadata={"Yogurt": 1, "Froyo": 52},
         )
