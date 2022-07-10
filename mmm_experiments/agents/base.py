@@ -362,10 +362,14 @@ class SequentialAgentMixin:
         return dict(position=[position], rel_position=[relative_position], cache_len=[len(self.independent_cache)])
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
-        last = self.independent_cache[-1]
-        point = last + self.step_size
-        if point > self.relative_max:
-            point = self.relative_min
+        if self.independent_cache:
+            last = self.independent_cache[-1]
+            point = last + self.step_size
+            if point > self.relative_max:
+                point = self.relative_min
+        else:
+            last = 0.0
+            point = 0.0
         doc = dict(last_point=[last], next_point=[point])
         return doc, [point]
 
