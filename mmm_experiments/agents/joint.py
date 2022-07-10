@@ -7,6 +7,7 @@ import numpy as np
 import xarray
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http import REManagerAPI
+from sklearn.cluster import KMeans
 from sklearn.decomposition import NMF
 
 from .base import GeometricResolutionMixin, SequentialAgentMixin
@@ -86,6 +87,7 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
         self.bmm_last_request = time.time()
         self.background = self.get_wafer_background()
         self.dependent_cache = []
+        self.model_method = "NMF"
 
     @property
     def subject_origin(self):
@@ -97,7 +99,7 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
     def subject_plan_kwargs(self, point) -> dict:
         kwargs = BMMAgent.measurement_plan_kwargs(self, point)
         kwargs.setdefault("md", {})
-        kwargs["md"]["agent"] = "MonarchPDFSubjectBMM"
+        kwargs["md"]["agent"] = f"MonarchPDFSubjectBMM_{self.model_method}"
         return kwargs
 
     def get_wafer_background(self):
@@ -122,11 +124,18 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
         return run.start["Grid_X"]["Grid_X"]["value"], y
 
     def generate_subject_ask(self) -> list:
-        """This is where the clever happens"""
+        """Alternate NMF and KMeans to find the most interesting triplet."""
         data = np.stack(self.dependent_cache)
-        nmf = NMF(3)
-        nmf.fit(data)
-        components = nmf.components_
+        if self.model_method == "Kmeans":
+            self.model_method = "NMF"
+            nmf = NMF(3)
+            nmf.fit(data)
+            components = nmf.components_
+        else:
+            self.model_method = "Kmeans"
+            model = KMeans(3)
+            model.fit(data)
+            components = model.cluster_centers_
         nearest = []  # nearest indices to the derived components (MSE)
         for c in components:
             nearest.append(np.argmin(np.mean((data - c) ** 2, axis=-1)))
@@ -188,8 +197,10 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
         return kwargs
 
     def generate_subject_ask(self) -> list:
-        """This is where the clever happens"""
-        raise NotImplementedError
+        """BMM asks PDF to measure it's most distinct signal. Construct distance matrix and sum"""
+        data = np.stack(self.dependent_cache)
+        dists = -2 * np.dot(data, data.T) + np.sum(data ** 2, axis=1) + np.sum(data ** 2, axis=1)[:, np.newaxis]
+        return [np.argmax(np.sum(dists, axis=-1))]
 
     def tell(self, position, y):
         doc = super().tell(position, y)
