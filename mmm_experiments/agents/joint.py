@@ -155,6 +155,10 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
             for point in subject_points:
                 if point in self.bmm_request_cache:
                     logging.info(f"Point {point} already measured by BMM. Skipping...")
+                    continue
+                if point > self.bmm_bounds[1]:
+                    point = self.bmm_bounds[0] + (point - self.bmm_bounds[1])
+                    logging.info(f"Point {point} beyond BMM bounds, cycling to other end.")
                 plan = BPlan(
                     self.subject_plan_name, *self.subject_plan_args(point), **self.subject_plan_kwargs(point)
                 )
