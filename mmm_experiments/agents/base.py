@@ -250,6 +250,7 @@ class Agent(ABC):
                 self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
         except Exception as e:  # noqa: E722 # TODO remove
             print(doc, e)
+            raise e
         self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
 
     @staticmethod
