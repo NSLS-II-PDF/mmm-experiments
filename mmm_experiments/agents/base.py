@@ -251,7 +251,7 @@ class Agent(ABC):
         except Exception as e:  # noqa: E722 # TODO remove
             print(doc, e)
             raise e
-        self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
+        self.agent_catalog.v1.insert(*self.builder._cache._ordered[-100000.0])
 
     @staticmethod
     def trigger_condition(uid) -> bool:
