@@ -396,7 +396,11 @@ class GeometricResolutionMixin(SequentialAgentMixin):
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
         if self.first_ask:
             self.first_ask = False
-            points = [self.relative_min, (self.relative_max - self.relative_min) / 2, self.relative_max]
+            points = [
+                self.relative_min,
+                self.relative_min + (self.relative_max - self.relative_min) / 2,
+                self.relative_max,
+            ]
             doc = dict(ask_ready=[True], size_of_batch=[len(points)], proposal=[points])
             self.points_per_batch = 3
             return doc, points
