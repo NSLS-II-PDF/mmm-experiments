@@ -16,7 +16,13 @@ from tiled.client import from_profile
 from xca.ml.torch.cnn import EnsembleCNN
 from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
 
-from .base import Agent, DrowsyAgent, RandomAgentMixin, SequentialAgentMixin
+from .base import (
+    Agent,
+    DrowsyAgent,
+    GeometricResolutionMixin,
+    RandomAgentMixin,
+    SequentialAgentMixin,
+)
 
 Representation = namedtuple("Representation", "probabilities shannon_entropy reconstruction_loss")
 
@@ -109,6 +115,10 @@ class RandomAgent(RandomAgentMixin, PDFAgent):
     Hears a stop document and immediately suggests a random point within the bounds.
     Uses the same signature as SequentialAgent.
     """
+
+
+class GeometricAgent(GeometricResolutionMixin, PDFAgent):
+    """Geometric series for resolution at PDF"""
 
 
 class XCAAgent(PDFAgent):
