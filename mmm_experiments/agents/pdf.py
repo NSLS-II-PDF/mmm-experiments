@@ -50,7 +50,8 @@ class PDFAgent(Agent, ABC):
         *,
         sample_origin: Tuple[float, float],
         relative_bounds: Tuple[float, float],
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
+        **kwargs
     ):
         """
         Base class for all PDF agents
@@ -64,7 +65,7 @@ class PDFAgent(Agent, ABC):
         metadata : dict
             Optional metadata dictionary for the agent start document
         """
-        super().__init__(beamline_tla="pdf", metadata=metadata)
+        super().__init__(beamline_tla="pdf", metadata=metadata, **kwargs)
         self.exp_catalog = from_profile("pdf_bluesky_sandbox")
         self.sample_origin = sample_origin
         self._relative_bounds = relative_bounds
