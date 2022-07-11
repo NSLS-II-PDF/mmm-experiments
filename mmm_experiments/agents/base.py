@@ -1,5 +1,4 @@
 import logging
-import signal
 import sys
 import uuid
 from abc import ABC, abstractmethod
@@ -24,13 +23,7 @@ class Agent(ABC):
     a catalog to write agent status to, and a manager API for the HTTP server.
     """
 
-    def __init__(
-        self,
-        *,
-        beamline_tla: str,
-        metadata: Optional[dict] = None,
-        restart_from_uid: Optional[str] = None,
-    ):
+    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None):
         logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
@@ -53,10 +46,6 @@ class Agent(ABC):
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
         self.builder = None
-        if restart_from_uid:
-            self.restart(restart_from_uid)
-        else:
-            self.start()
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
         self.re_manager.set_authorization_key(api_key=self.api_key)
 
@@ -95,14 +84,22 @@ class Agent(ABC):
         """String name of registered plan"""
         ...
 
+    @staticmethod
     @abstractmethod
-    def measurement_plan_args(self, point) -> list:
-        """List of arguments to pass to plan from a point to measure."""
+    def measurement_plan_args(point) -> list:
+        """
+        List of arguments to pass to plan from a point to measure.
+        This is a good place to transform relative into absolute motor coords.
+        """
         ...
 
+    @staticmethod
     @abstractmethod
-    def measurement_plan_kwargs(self, point) -> dict:
-        """Construct dictionary of keyword arguments to pass the plan, from a point to measure."""
+    def measurement_plan_kwargs(point) -> dict:
+        """
+        Construct dictionary of keyword arguments to pass the plan, from a point to measure.
+        This is a good place to transform relative into absolute motor coords.
+        """
         ...
 
     @staticmethod
@@ -243,6 +240,8 @@ class Agent(ABC):
 
     def _write_event(self, stream, doc):
         """Add event to builder as event page, and publish to catalog"""
+        if not doc:
+            return
         if stream in self.builder._streams:
             self.builder.add_data(stream, data=doc)
         else:
@@ -275,7 +274,7 @@ class Agent(ABC):
             # Tell
             logging.debug("Telling agent about some new data.")
             doc = self.tell(independent_variable, dependent_variable)
-            doc["exp_uid"] = uid
+            doc["exp_uid"] = [uid]
             self._write_event("tell", doc)
 
             # Ask
@@ -284,11 +283,14 @@ class Agent(ABC):
             self._check_queue_and_start()
             self._write_event("ask", doc)
 
-    def start(self):
+    def start(self, ask_at_start=False):
         logging.debug("Issuing start document and start listening to Kafka")
         self.builder = RunBuilder(metadata=self.metadata)
         self.agent_catalog.v1.insert("start", self.builder._cache.start_doc)
         logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
+        if ask_at_start:
+            self._add_to_queue(1)
+            self._check_queue_and_start()
         self.kafka_dispatcher.subscribe(self._on_stop_router)
         self.kafka_dispatcher.start()
 
@@ -347,18 +349,6 @@ class Agent(ABC):
         sys.exit(0)
 
 
-def example_run():
-    """Example function for running an agent."""
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    try:
-        agent = Agent(beamline_tla="tla")
-        signal.signal(signal.SIGINT, agent.signal_handler)
-    except Exception as e:
-        agent.stop(exit_status="fail", reason=f"{e}")
-        raise e
-
-
 class SequentialAgentMixin:
     """Mixin to be used with Agent children"""
 
@@ -371,15 +361,76 @@ class SequentialAgentMixin:
     def tell(self, position, y) -> dict:
         relative_position = position - self.measurement_origin
         self.independent_cache.append(relative_position)
-        return dict(position=position, rel_position=relative_position, cache_len=len(self.independent_cache))
+        return dict(position=[position], rel_position=[relative_position], cache_len=[len(self.independent_cache)])
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
-        last = self.independent_cache[-1]
-        point = last + self.step_size
-        if point > self.relative_max:
-            point = self.relative_min
-        doc = dict(last_point=last, next_point=point)
+        if self.independent_cache:
+            last = self.independent_cache[-1]
+            point = last + self.step_size
+            if point > self.relative_max:
+                point = self.relative_min
+        else:
+            last = 0.0
+            point = 0.0
+        doc = dict(last_point=[last], next_point=[point])
         return doc, [point]
+
+
+class GeometricResolutionMixin(SequentialAgentMixin):
+    """
+    Mixin to be used with Agent children.
+    Performs a gridsearch with increasing resolution
+    Uses `tell` method of SequentialAgentMixin
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.points_per_batch = 0
+        self.independent_cache = []
+        self.acumulated_stops = 0
+        self.first_ask = True
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        if self.first_ask:
+            self.first_ask = False
+            points = [
+                self.relative_min,
+                self.relative_min + (self.relative_max - self.relative_min) / 2,
+                self.relative_max,
+            ]
+            doc = dict(ask_ready=[False], size_of_batch=[len(points)], proposal=[points])
+            self.points_per_batch = 3
+            return doc, points
+
+        self.acumulated_stops += 1
+        if self.acumulated_stops == self.points_per_batch:
+            # 3 then 2 then geometric expansion
+            self.acumulated_stops = 0
+            self.independent_cache = sorted(self.independent_cache)
+            points = []
+            for i in range(len(self.independent_cache) - 1):
+                points.append(
+                    self.independent_cache[i] + ((self.independent_cache[i + 1] - self.independent_cache[i]) / 2)
+                )
+            self.points_per_batch = len(points)
+            doc = dict(
+                ask_ready=[True] * len(points),
+                acummulated_stops=[self.acumulated_stops] * len(points),
+                proposal=points,
+            )
+        else:
+            doc = dict(ask_ready=[False], acummulated_stops=[self.acumulated_stops], proposal=[-10000.0])
+            points = []
+        return doc, points
+
+    def _check_queue_and_start(self):
+        """
+        Override the exaclty 1 rule and always start the queue if its idle and I just added plans.
+        """
+        status = self.re_manager.status(reload=True)
+        if status["worker_environment_exists"] is True and status["manager_state"] == "idle":
+            self.re_manager.queue_start()
+            logging.info("Agent is starting an idle queue.")
 
 
 class RandomAgentMixin:
@@ -393,7 +444,7 @@ class RandomAgentMixin:
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
         point = np.random.uniform(*self.relative_bounds)
-        doc = dict(next_point=point)
+        doc = dict(next_point=[point])
         return doc, [point]
 
 
@@ -411,7 +462,7 @@ class DrowsyAgent(Agent, ABC):
 
     def measurement_plan_kwargs(self, point) -> dict:
         if self.counter % 2 == 0:
-            return dict(delay_kwarg=1)
+            return dict(delay=1.2)
         else:
             return {}
 
@@ -419,16 +470,25 @@ class DrowsyAgent(Agent, ABC):
         if self.counter % 2 == 0:
             return []
         else:
-            return [1]
+            return [1.2]
 
+    @staticmethod
     def unpack_run(run: databroker.client.BlueskyRun):
-        return 0.0, 0.0
+        return [0.0], [0.0]
 
     def tell(self, x, y) -> dict:
         return dict(x=x, y=y)
 
     def ask(self, batch_size: int) -> Tuple[dict, Sequence]:
-        return dict(batch_size=batch_size), [0.0]
+        self.counter += 1
+        logging.debug(f"Counter={self.counter}")
+        return dict(batch_size=[batch_size]), [0.0]
 
     def report(self):
+        pass
+
+    def measurement_origin(self):
+        pass
+
+    def relative_bounds(self):
         pass

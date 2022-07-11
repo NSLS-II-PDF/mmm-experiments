@@ -25,20 +25,22 @@ pre-commit too keep your code black, flaked, and imports sorted.
     pip install -r requirements-dev.txt
     pre-commit install
 
-Proposed Package Structure
---------------------------
-- **agents**
-    - base
-    - pdf
-    - bmm
-- **data**: processing and access controls for each beamline
-    - utils
-    - pdf
-    - bmm
-- **viz**: visualization methods for data and agents
-    - utils
-    - pdf
-    - bmm
+Beamline Origins and Args
+-------------------------
+
+===
+BMM
+===
+- Origin for Ti: [155.381, 82.169].
+- Range of sample is from X=X0-30 to X0+23
+- Ti detector position for xafs_det is 20.
+- The Ti rich side is in the negative direction
+
+- Origin for Cu: [155.390, 83.96].
+- Range of sample is from X=X0-30 to X0+23
+- Cu detector position for xafs_det is 205.
+- The Ti rich side is in the negative direction
+
 
 
 Setting up Tiled Access
@@ -131,9 +133,9 @@ will make the plan available. The following commands as the operator account sho
     qserver environment close
     qserver status
     qserver-list-plans-devices --startup-dir . # updates existing_plans_and_devices.yaml
+    qserver environment open
     # Check exiting plans
     qserver existing plans
-    qserver environment open
     qserver status
     # waiting for  'worker_environment_exists': True, 'worker_environment_state': 'idle'}
     # The following line is sometimes necessary...
@@ -142,6 +144,14 @@ will make the plan available. The following commands as the operator account sho
     qserver allowed plans
 
 
+If only the contents of a plan change, but not the signature of the plan itself,
+the environement only needs to be closed and re-opened. This saves some time when gently tweaking plans.
+
+===================
+Launching a monitor
+===================
+- Activate overlay (<tla>_mmm.sh)
+- QSERVER_HTTP_SERVER_API_KEY=... queue-monitor --http-server-uri https://qserver.nsls2.bnl.gov/<tla>
 
 Dealing with PDF Analyzed data
 ------------------------------
@@ -159,7 +169,7 @@ On the workstations for some recent bluesky-widgets and queserver packages for q
 And on tritium for training models and deploying agents.
 
 1. create /nsls2/data/{tla}/shared/config/bluesky_overlay/multi-modal-madness
-2. pip install stuff into this prefix with no dependencies. :code:`pip install {package} --prefix {overlay_directory} --upgrade -I --no-dependencies`
+2. pip install stuff into this prefix with no dependencies. :code:`pip install {package} --prefix {overlay_directory} --upgrade -I --no-dependencies --no-build-isolation`
     - bluesky-queueserver
     - bluesky-queueserver-api
     - git+https://github.com/bluesky/bluesky-widgets@60a461659611387b18eee9b84c6a9b22c22df113
@@ -180,3 +190,16 @@ Running List of Gripes/Complaints/Bugs/Suggested Improvements
     - The agents are then allowed to try and start/stop the queue.
     - An emergency stop inolves pausing the current plan. Aborting the plan. Closing the environment.
 - Currently efforts have been put forward to use conditionals to avoid errors in queue/http server. In production version all exceptions including communication timeout exceptions should be properly processed, but this may work fine for this experiment.
+- Everything to run builder must be a list for event streams. Becuse everything is going through event page whether you like it or not.
+- Adding plans changes detector exposure time at PDF. This is likely a design problem with BSUI and PDF's profile.
+- The operator account's home directory is not shared between the srv1 VM and the workstations. This was an issue for BMM's plans that reference a file in the home dir.
+    - Bruce's scheme for knowing where to write data was not working on a fresh machine that had never seen the BMMuser.start_experiment() command run by hand in bsui
+    - Bruce has a spreadsheet that doesn't get cleared effectively after other experiments, and the plan will look for something that doesn't exist because the "instrument" argument was set.
+    - There was also cross talk of state between files and redis, so clearing one could sometimes have no effect.
+- We need a helper in queueserver to get into an ipython shell and poke around, or an ipython kernel from that namespace. This would have helped with debugging the above (which took hours...).
+- Starting up bsui or qserver env can change the detector frame-rate at PDF which can confuse existing bsui sessions. This is a problem with state management at PDF.
+- Nohuped agents should be killed with signit. `kill -s SIGINT <PID>`
+- Passive queue monitor agents are necessary to alert for failures over night, potentially restart queue, etc. (Separate from decision making agents)
+- The PDF agent during a long experiment failed because it stopped receiving stop documents.
+    - pdfstream -> kafka+mongo bridge saturated a local hard disk, and stopped issuing messages to kafka.
+
