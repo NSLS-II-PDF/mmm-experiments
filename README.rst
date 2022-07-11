@@ -199,4 +199,7 @@ Running List of Gripes/Complaints/Bugs/Suggested Improvements
 - We need a helper in queueserver to get into an ipython shell and poke around, or an ipython kernel from that namespace. This would have helped with debugging the above (which took hours...).
 - Starting up bsui or qserver env can change the detector frame-rate at PDF which can confuse existing bsui sessions. This is a problem with state management at PDF.
 - Nohuped agents should be killed with signit. `kill -s SIGINT <PID>`
+- Passive queue monitor agents are necessary to alert for failures over night, potentially restart queue, etc. (Separate from decision making agents)
+- The PDF agent during a long experiment failed because it stopped receiving stop documents.
+    - pdfstream -> kafka+mongo bridge saturated a local hard disk, and stopped issuing messages to kafka.
 
