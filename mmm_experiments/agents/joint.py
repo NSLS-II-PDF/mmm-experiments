@@ -171,6 +171,7 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
                 )
                 if r["success"] is True:
                     self.bmm_request_cache.add(point)
+            self.bmm_last_request = time.time()
         return doc, points
 
 
