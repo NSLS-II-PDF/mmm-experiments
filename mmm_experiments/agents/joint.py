@@ -16,10 +16,13 @@ from .pdf import PDFAgent
 
 
 class MonarchSubjectBase(ABC):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.subject_manager = REManagerAPI(http_server_uri=self.subject_host)
-        self.subject_manager.set_authorization_key(api_key=self.subject_api_key)
+    def __init__(self, offline=False, **kwargs):
+        super().__init__(offline=offline, **kwargs)
+        if offline:
+            self.subject_manager = None
+        else:
+            self.subject_manager = REManagerAPI(http_server_uri=self.subject_host)
+            self.subject_manager.set_authorization_key(api_key=self.subject_api_key)
 
     @property
     @abstractmethod

@@ -23,31 +23,37 @@ class Agent(ABC):
     a catalog to write agent status to, and a manager API for the HTTP server.
     """
 
-    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None):
+    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None, offline: bool = False):
+        self.metadata = metadata or {}
         logging.debug("Initializing Agent")
-        self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
-        self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
-        self.kafka_dispatcher = RemoteDispatcher(
-            topics=[f"{beamline_tla}.bluesky.pdfstream.documents"]
-            if beamline_tla == "pdf"
-            else [f"{beamline_tla}.bluesky.runengine.documents"],  # PDF will attend to analyized data
-            bootstrap_servers=",".join(self.kafka_config["bootstrap_servers"]),
-            group_id=self.kafka_group_id,
-            consumer_config=self.kafka_config["runengine_producer_config"],
-        )
-        logging.debug("Kafka setup sucessfully.")
+        if offline:
+            logging.info("Starting agent in offline mode. No Kafka or REManager.")
+            self.kafka_dispatcher = None
+            self.re_manager = None
+        else:
+            self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
+            self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
+            self.kafka_dispatcher = RemoteDispatcher(
+                topics=[f"{beamline_tla}.bluesky.pdfstream.documents"]
+                if beamline_tla == "pdf"
+                else [f"{beamline_tla}.bluesky.runengine.documents"],  # PDF will attend to analyized data
+                bootstrap_servers=",".join(self.kafka_config["bootstrap_servers"]),
+                group_id=self.kafka_group_id,
+                consumer_config=self.kafka_config["runengine_producer_config"],
+            )
+            logging.debug("Kafka setup sucessfully.")
+            self.re_manager = REManagerAPI(http_server_uri=self.server_host)
+            self.re_manager.set_authorization_key(api_key=self.api_key)
+            self.metadata["kafka_group_id"] = self.kafka_group_id
+
         self.exp_catalog = (
             from_profile("pdf_bluesky_sandbox") if beamline_tla == "pdf" else from_profile(beamline_tla)
         )
-        logging.info(f"Reading data from catalog: {self.exp_catalog}")
+        logging.info(f"Data will be read from catalog: {self.exp_catalog}")
         self.agent_catalog = from_profile(f"{beamline_tla}_bluesky_sandbox")
-        logging.info(f"Writing data to catalog: {self.agent_catalog}")
-        self.metadata = metadata or {}
+        logging.info(f"Data will be written to catalog: {self.agent_catalog}")
         self.metadata["beamline_tla"] = beamline_tla
-        self.metadata["kafka_group_id"] = self.kafka_group_id
         self.builder = None
-        self.re_manager = REManagerAPI(http_server_uri=self.server_host)
-        self.re_manager.set_authorization_key(api_key=self.api_key)
 
     @property
     @abstractmethod
