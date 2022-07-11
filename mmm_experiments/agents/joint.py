@@ -7,6 +7,7 @@ import numpy as np
 import xarray
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http import REManagerAPI
+from scipy.interpolate import interp1d
 from sklearn.cluster import KMeans
 from sklearn.decomposition import NMF
 
@@ -121,7 +122,10 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
         """Interpolates intensity onto the standard Q space."""
         x = run.primary.data["chi_Q"][0]
         y = run.primary.data["chi_I"][0]
-        scaler = self.bkg_scaler(x, y, self.background)
+        f = interp1d(x, y, fill_value=0.0)
+        q_space = self.background["chi_Q"].data.flatten()
+        y = f(q_space)
+        scaler = self.bkg_scaler(q_space, y, self.background)
         y = np.array(y) - float(scaler) * np.array(self.background["chi_I"])
         y = (y - y.min()) / (y.max() - y.min())
         return run.start["Grid_X"]["Grid_X"]["value"], y
