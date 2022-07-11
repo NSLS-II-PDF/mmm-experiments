@@ -22,8 +22,11 @@ class DrowsyBMMAgent(DrowsyAgent):
     Alternates sending args vs kwargs to do the same thing.
     """
 
-    server_host = "https://qserver.nslsl2.bnl.gov/bmm"
+    server_host = "https://qserver.nsls2.bnl.gov/bmm"
     api_key = "zzzzz"
+
+    def __init__(self):
+        super().__init__(beamline_tla="bmm")
 
 
 class BMMAgent(Agent, ABC):
@@ -33,8 +36,9 @@ class BMMAgent(Agent, ABC):
     The agent will by default only consider the data from the Cu K-edge measurement.
     """
 
-    server_host = "https://qserver.nslsl2.bnl.gov/bmm"
+    server_host = "https://qserver.nsls2.bnl.gov/bmm"
     measurement_plan_name = "agent_move_and_measure"
+    # measurement_plan_name = "agent_xafs"
     api_key = "zzzzz"
     sample_position_motors = ("xafs_x", "xafs_y")
 
@@ -47,7 +51,6 @@ class BMMAgent(Agent, ABC):
         Ti_det_position: float,
         relative_bounds: Tuple[float, float],
         metadata: Optional[dict] = None,
-        restart_from_uid: Optional[str] = None,
     ):
         """
 
@@ -66,10 +69,8 @@ class BMMAgent(Agent, ABC):
             this would be something like (1, 99).
         metadata : dict
             Optional metadata dictionary for the agent start document
-        restart_from_uid : str
-            Optional uid to reload agent from previous run.
         """
-        super().__init__(beamline_tla="bmm", metadata=metadata, restart_from_uid=restart_from_uid)
+        super().__init__(beamline_tla="bmm", metadata=metadata)
         self.Cu_origin = Cu_origin
         self.Ti_origin = Ti_origin
         self.Cu_det_position = Cu_det_position
@@ -83,11 +84,12 @@ class BMMAgent(Agent, ABC):
         run_preprocessor.fetch(run, mode="fluorescence")
         # x_data = run_preprocessor.group.k
         y_data = run_preprocessor.group.chi
-        md = ast.literal_eval(run.start["XDI"]["_comment"])
+        md = ast.literal_eval(run.start["XDI"]["_comment"][0])
         return md["Cu_position"], y_data
 
     def measurement_plan_args(self, point):
-        """List of arguments to pass to plan"""
+        """List of arguments to pass to plan.
+        BMM agents are relative to Cu origin, but separate origins are needed for other element edges."""
         return (
             self.sample_position_motors[0],
             self.Cu_origin[0] + point,
@@ -101,7 +103,7 @@ class BMMAgent(Agent, ABC):
         return dict(
             Cu_det_position=self.Cu_det_position,
             Ti_det_position=self.Ti_det_position,
-            filename="MultimodalMadness",
+            filename="MultimodalMadnessSundayProd",
             nscans=1,
             start="next",
             mode="fluorescence",
@@ -111,10 +113,15 @@ class BMMAgent(Agent, ABC):
             bounds="-200 -30 -10 25 12k",
             steps="10 2 0.3 0.05k",
             times="0.5 0.5 0.5 0.5",
+            snapshots=False,
         )
 
     def trigger_condition(self, uid) -> bool:
-        return self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
+        return (
+            "XDI" in self.exp_catalog[uid].start
+            and self.exp_catalog[uid].start["plan_name"].startswith("scan_nd")
+            and self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Cu"
+        )
 
     @property
     def measurement_origin(self):
@@ -140,8 +147,7 @@ class SequentialAgent(SequentialAgentMixin, BMMAgent):
     """
 
     def __init__(self, step_size: float = 0.0, **kwargs):
-        super(SequentialAgentMixin, self).__init__(**kwargs)
-        super().__init__(step_size=step_size)
+        super().__init__(step_size=step_size, **kwargs)
 
 
 class RandomAgent(RandomAgentMixin, BMMAgent):

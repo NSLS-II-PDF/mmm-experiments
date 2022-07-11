@@ -1,7 +1,7 @@
 from abc import ABC
 from collections import namedtuple
 from pathlib import Path
-from typing import Literal, Tuple, Union
+from typing import Literal, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -16,7 +16,13 @@ from tiled.client import from_profile
 from xca.ml.torch.cnn import EnsembleCNN
 from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
 
-from .base import Agent, DrowsyAgent, RandomAgentMixin, SequentialAgentMixin
+from .base import (
+    Agent,
+    DrowsyAgent,
+    GeometricResolutionMixin,
+    RandomAgentMixin,
+    SequentialAgentMixin,
+)
 
 Representation = namedtuple("Representation", "probabilities shannon_entropy reconstruction_loss")
 
@@ -27,16 +33,25 @@ class DrowsyPDFAgent(DrowsyAgent):
     Alternates sending args vs kwargs to do the same thing.
     """
 
-    server_host = "https://qserver.nslsl2.bnl.gov/pdf"
+    server_host = "https://qserver.nsls2.bnl.gov/pdf"
     api_key = "yyyyy"
+
+    def __init__(self):
+        super().__init__(beamline_tla="pdf")
 
 
 class PDFAgent(Agent, ABC):
-    server_host = "https://qserver.nslsl2.bnl.gov/pdf"
+    server_host = "https://qserver.nsls2.bnl.gov/pdf"
     measurement_plan_name = "agent_sample_count"
     api_key = "yyyyy"
 
-    def __init__(self, *, sample_origin: Tuple[float, float], relative_bounds: Tuple[float, float]):
+    def __init__(
+        self,
+        *,
+        sample_origin: Tuple[float, float],
+        relative_bounds: Tuple[float, float],
+        metadata: Optional[dict] = None
+    ):
         """
         Base class for all PDF agents
 
@@ -46,8 +61,10 @@ class PDFAgent(Agent, ABC):
             Decided origin of sample in raw motor coordinates
         relative_bounds : Tuple[float, float]
             Relative bounds for the sample measurement. For a 10 cm sample, this would be something like (1, 99).
+        metadata : dict
+            Optional metadata dictionary for the agent start document
         """
-        super().__init__(beamline_tla="pdf")
+        super().__init__(beamline_tla="pdf", metadata=metadata)
         self.exp_catalog = from_profile("pdf_bluesky_sandbox")
         self.sample_origin = sample_origin
         self._relative_bounds = relative_bounds
@@ -62,17 +79,17 @@ class PDFAgent(Agent, ABC):
 
     def measurement_plan_args(self, x_position) -> list:
         """Plan to be writen than moves to an x_position then jogs up and down relatively in y"""
-        return [5, "Grid_X", x_position]
+        return ["Grid_X", x_position + self.measurement_origin, 30]
 
     def measurement_plan_kwargs(self, point) -> dict:
-        return {}
+        return {"sample_number": 16}
 
     @staticmethod
     def unpack_run(run: BlueskyRun):
         """"""
         # x = np.array(run.primary.data["chi_2theta"][0])
         y = np.array(run.primary.data["chi_I"][0])
-        return run.start["Grid_X"], y
+        return run.start["Grid_X"]["Grid_X"]["value"], y
 
     def report(self):
         pass
@@ -90,8 +107,7 @@ class SequentialAgent(SequentialAgentMixin, PDFAgent):
     """
 
     def __init__(self, step_size: float = 0.0, **kwargs):
-        super(SequentialAgentMixin, self).__init__(**kwargs)
-        super().__init__(step_size=step_size)
+        super().__init__(step_size=step_size, **kwargs)
 
 
 class RandomAgent(RandomAgentMixin, PDFAgent):
@@ -99,6 +115,10 @@ class RandomAgent(RandomAgentMixin, PDFAgent):
     Hears a stop document and immediately suggests a random point within the bounds.
     Uses the same signature as SequentialAgent.
     """
+
+
+class GeometricAgent(GeometricResolutionMixin, PDFAgent):
+    """Geometric series for resolution at PDF"""
 
 
 class XCAAgent(PDFAgent):
@@ -151,7 +171,7 @@ class XCAAgent(PDFAgent):
         f = interp1d(x, y, fill_value=0.0)
         spectra = f(self.q_space)
         spectra = (spectra - np.min(spectra)) / (np.max(spectra) - np.min(spectra))
-        return run.start["Grid_X"], spectra
+        return run.start["Grid_X"]["Grid_X"]["value"], spectra
 
     def tell(self, position, intensity):
         """
@@ -189,13 +209,13 @@ class XCAAgent(PDFAgent):
         self.representation_cache.append(Representation(prediction_prob, shannon, loss))
 
         doc = dict(
-            position=position,
-            rel_position=rel_position,
-            intensity=intensity,
-            prediction_prob=prediction_prob.to("cpu").numpy(),
-            reconstruction=x.to("cpu").numpy(),
-            shannon=float(shannon.to("cpu")),
-            loss=float(loss.to("cpu")),
+            position=[position],
+            rel_position=[rel_position],
+            intensity=[intensity],
+            prediction_prob=[prediction_prob.to("cpu").numpy()],
+            reconstruction=[x.to("cpu").numpy()],
+            shannon=[float(shannon.to("cpu"))],
+            loss=[float(loss.to("cpu"))],
         )
         return doc
 
@@ -242,9 +262,11 @@ class XCAAgent(PDFAgent):
             next_points = [float(x.to("cpu")) for x in next_points]
 
         doc = dict(
-            batch_size=batch_size,
-            next_points=next_points,
-            ucb_beta=self.beta,
-            acq_value=[float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))],
+            batch_size=[batch_size],
+            next_points=[next_points],
+            ucb_beta=[self.beta],
+            acq_value=[
+                [float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))]
+            ],
         )
         return doc, next_points
