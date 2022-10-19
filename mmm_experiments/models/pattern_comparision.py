@@ -16,7 +16,7 @@ param_dict = {
 kwargs = {"march_range": (0.5, 1.0), "isotropic_expansion": (-0.05, 0.05)}
 shape_limit = 1e-3
 
-cif_paths = list((Path(__file__).parent / "phases").glob("*.cif"))
+cif_paths = list((Path(__file__).parent / "2022-nov" / "phases").glob("*.cif"))
 
 
 def view_stacked():
