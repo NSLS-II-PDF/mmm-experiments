@@ -4,8 +4,8 @@ from pymatgen.io.cif import CifWriter
 if __name__ == "__main__":
     with MPRester("iX88TXTq45ESWLJCSSiT4OI6yZbnNFpl") as mpr:
         docs = mpr.summary.search(
-            chemsys="Ti",
-            energy_above_hull=(0, 0.12),
+            chemsys="Pt",
+            energy_above_hull=(0, 0.05),
             fields=["material_id", "composition_reduced", "structure"],
         )
     for doc in docs:
@@ -32,8 +32,8 @@ if __name__ == "__main__":
 
     with MPRester("iX88TXTq45ESWLJCSSiT4OI6yZbnNFpl") as mpr:
         docs = mpr.summary.search(
-            chemsys="Zr-Ti",
-            energy_above_hull=(0, 0.16),
+            chemsys="Zr-Pt",
+            energy_above_hull=(0, 0.1),
             fields=["material_id", "composition_reduced", "structure"],
         )
     for doc in docs:

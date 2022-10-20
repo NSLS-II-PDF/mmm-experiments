@@ -1,17 +1,17 @@
 # generated using pymatgen
-data_ZrTi2
+data_Zr2Pt
 _symmetry_space_group_name_H-M   Fd-3m
-_cell_length_a   7.82747600
-_cell_length_b   7.82747600
-_cell_length_c   7.82747600
+_cell_length_a   12.62954000
+_cell_length_b   12.62954000
+_cell_length_c   12.62954000
 _cell_angle_alpha   90.00000000
 _cell_angle_beta   90.00000000
 _cell_angle_gamma   90.00000000
 _symmetry_Int_Tables_number   227
-_chemical_formula_structural   ZrTi2
-_chemical_formula_sum   'Zr8 Ti16'
-_cell_volume   479.58460564
-_cell_formula_units_Z   8
+_chemical_formula_structural   Zr2Pt
+_chemical_formula_sum   'Zr64 Pt32'
+_cell_volume   2014.47832170
+_cell_formula_units_Z   32
 loop_
  _symmetry_equiv_pos_site_id
  _symmetry_equiv_pos_as_xyz
@@ -215,5 +215,6 @@ loop_
  _atom_site_fract_y
  _atom_site_fract_z
  _atom_site_occupancy
-  Zr  Zr0  8  0.00000000  0.00000000  0.50000000  1
-  Ti  Ti1  16  0.12500000  0.12500000  0.12500000  1
+  Zr  Zr0  48  0.00000000  0.00000000  0.31207300  1
+  Zr  Zr1  16  0.12500000  0.12500000  0.12500000  1
+  Pt  Pt2  32  0.09493533  0.09493533  0.90506467  1
