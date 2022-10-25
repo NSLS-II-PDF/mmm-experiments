@@ -21,9 +21,21 @@ class Agent(ABC):
 
     Base agent sets up a kafka subscription to listen to new stop documents, a catalog to read for experiments,
     a catalog to write agent status to, and a manager API for the HTTP server.
+
+    Parameters
+    ----------
+    beamline_tla: str
+        Beamline three letter acronym. Used in setting up the connection to kafka and tiled server
+    metadata: Optional[dict]
+        Optional extra metadata to add
+    ask_on_tell: bool
+        Whether to ask for new points every time an agent is told about new data.
+        To create a truly passive agent, it is best to implement ask as a method that does nothing.
+        To create an agent that only suggests new points periodically or on another trigger, `ask_on_tell`
+        should be set to False.
     """
 
-    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None):
+    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None, ask_on_tell: bool = True):
         logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
@@ -47,6 +59,7 @@ class Agent(ABC):
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
         self.metadata["agent_uid"] = self.agent_uid = str(uuid.uuid4())
+        self.metadata["ask_on_tell"] = self._ask_on_tell = ask_on_tell
         self.builder = None
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
         self.re_manager.set_authorization_key(api_key=self.api_key)
@@ -162,7 +175,7 @@ class Agent(ABC):
         """
         ...
 
-    def report(self):
+    def report(self, **kwargs):
         """
         Create a report given the data observed by the agent.
         This could be potentially implemented in the base class to write document stream.
@@ -280,10 +293,11 @@ class Agent(ABC):
             self._write_event("tell", doc)
 
             # Ask
-            logging.debug("Issuing ask and adding to the queue.")
-            doc = self._add_to_queue(1)
-            self._check_queue_and_start()
-            self._write_event("ask", doc)
+            if self._ask_on_tell:
+                logging.debug("Issuing ask and adding to the queue.")
+                doc = self._add_to_queue(1)
+                self._check_queue_and_start()
+                self._write_event("ask", doc)
 
     def _agent_dispatcher_router(self, name, doc):
         """Internal router to check document name against self.
@@ -294,14 +308,21 @@ class Agent(ABC):
             try:
                 self.agent_dispatcher_callback(doc)
             except NotImplementedError:
-                pass
+                logging.debug(
+                    "Agent dispatcher received document named for agent, but no callback is implemented."
+                )
 
     def agent_dispatcher_callback(self, doc):
         """Callback to be called on appropriately named documents received from Kafka.
         This would be a reasonable place to bring the human into the loop by triggering
         `report` or `ask` or other functionality.
         """
-        raise NotImplementedError
+        if doc["action"] == "ask":
+            self._add_to_queue(doc.get("batch_size", 1))
+        elif doc["action"] == "report":
+            report_doc = self.report(**doc.get("action_kwargs", {}))
+            if report_doc:
+                self._write_event("report", doc)
 
     def start(self, ask_at_start=False):
         logging.debug("Issuing start document and start listening to Kafka")
