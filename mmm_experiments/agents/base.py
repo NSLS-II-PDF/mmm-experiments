@@ -35,6 +35,7 @@ class Agent(ABC):
             group_id=self.kafka_group_id,
             consumer_config=self.kafka_config["runengine_producer_config"],
         )
+        self.agent_dispatcher = ...  # TODO: Kafka dispatcher specifically for agent control mechanisms
         logging.debug("Kafka setup sucessfully.")
         self.exp_catalog = (
             from_profile("pdf_bluesky_sandbox") if beamline_tla == "pdf" else from_profile(beamline_tla)
@@ -45,6 +46,7 @@ class Agent(ABC):
         self.metadata = metadata or {}
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
+        self.metadata["agent_uid"] = self.agent_uid = str(uuid.uuid4())
         self.builder = None
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
         self.re_manager.set_authorization_key(api_key=self.api_key)
@@ -283,15 +285,35 @@ class Agent(ABC):
             self._check_queue_and_start()
             self._write_event("ask", doc)
 
+    def _agent_dispatcher_router(self, name, doc):
+        """Internal router to check document name against self.
+        An agent will only respond to command documents named in a stream with its uid.
+        """
+        uid = str(self.agent_uid)
+        if name == uid or name == uid[:8]:
+            try:
+                self.agent_dispatcher_callback(doc)
+            except NotImplementedError:
+                pass
+
+    def agent_dispatcher_callback(self, doc):
+        """Callback to be called on appropriately named documents received from Kafka.
+        This would be a reasonable place to bring the human into the loop by triggering
+        `report` or `ask` or other functionality.
+        """
+        raise NotImplementedError
+
     def start(self, ask_at_start=False):
         logging.debug("Issuing start document and start listening to Kafka")
         self.builder = RunBuilder(metadata=self.metadata)
         self.agent_catalog.v1.insert("start", self.builder._cache.start_doc)
+        logging.info(f"Agent uuid={self.builder._cache.start_doc['agent_uid']}")
         logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
         if ask_at_start:
             self._add_to_queue(1)
             self._check_queue_and_start()
         self.kafka_dispatcher.subscribe(self._on_stop_router)
+        self.agent_dispatcher.subscribe(self._agent_dispatcher_router)
         self.kafka_dispatcher.start()
 
     def restart(self, uid):
