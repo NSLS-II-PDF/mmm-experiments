@@ -175,10 +175,12 @@ class Agent(ABC):
         """
         ...
 
-    def report(self, **kwargs):
+    def report(self, **kwargs) -> dict:
         """
         Create a report given the data observed by the agent.
         This could be potentially implemented in the base class to write document stream.
+        Additional functionality for converting the report dict into an image or formatted report is
+        the duty of the child class.
         """
 
         raise NotImplementedError
