@@ -35,7 +35,7 @@ def joint_vae_class_main(checkpoint=None):
             kernel_sizes=[5, 5, 5],
             strides=[2, 2, 2],
             pool_sizes=[1, 1, 1],
-            n_classes=10,
+            n_classes=13,
             ReLU_alpha=0.2,
             dense_dropout=0.4,
         )
