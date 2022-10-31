@@ -12,6 +12,9 @@ from bluesky_live.run_builder import RunBuilder
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http import REManagerAPI
 from tiled.client import from_profile
+from xkcdpass import xkcd_password as xp
+
+PASSWORD_LIST = xp.generate_wordlist(wordfile=xp.locate_wordfile(), min_length=3, max_length=8)
 
 
 class Agent(ABC):
@@ -58,7 +61,9 @@ class Agent(ABC):
         self.metadata = metadata or {}
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
-        self.metadata["agent_uid"] = self.agent_uid = str(uuid.uuid4())
+        self.metadata[
+            "agent_uid"
+        ] = self.agent_uid = f"{self.name}-{xp.generate_xkcdpassword(PASSWORD_LIST, numwords=2, delimiter='-')}"
         self.metadata["ask_on_tell"] = self._ask_on_tell = ask_on_tell
         self.builder = None
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
@@ -211,6 +216,11 @@ class Agent(ABC):
     @property
     def _queue_add_position(self) -> Union[int, Literal["front", "back"]]:
         return "back"
+
+    @property
+    def name(self) -> str:
+        """Short string name"""
+        return "agent"
 
     def _add_to_queue(self, batch_size: int = 1):
         """
