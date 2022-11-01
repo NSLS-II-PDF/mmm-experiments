@@ -6,7 +6,7 @@ import msgpack
 
 from confluent_kafka import Producer
 
-from bluesky_kafka import default_delivery_report
+from bluesky_kafka import default_delivery_report, Publisher
 
 try:
     from nslsii import _read_bluesky_kafka_config_file
@@ -192,7 +192,7 @@ def configure_kafka_publisher(RE, beamline_name, override_config_path=None, **kw
     return bluesky_kafka_configuration, kafka_publisher_details
 
 
-class RecPublisher:
+class RecPublisher(Publisher):
     """
     A class for publishing Agent reccomendations to a kafka topic.
 
@@ -250,42 +250,6 @@ class RecPublisher:
     >>> publisher.suggest({...})
     """
 
-    def __init__(
-        self,
-        topic,
-        bootstrap_servers,
-        key,
-        producer_config=None,
-        on_delivery=None,
-        flush_on_stop_doc=False,
-        serializer=msgpack.dumps,
-    ):
-        self.topic = topic
-        self._bootstrap_servers = bootstrap_servers
-        self._key = key
-        # in the case that "bootstrap.servers" is included in producer_config
-        # combine it with the bootstrap_servers argument
-        self._producer_config = dict()
-        if producer_config is not None:
-            self._producer_config.update(producer_config)
-        if "bootstrap.servers" in self._producer_config:
-            self._producer_config["bootstrap.servers"] = ",".join(
-                [bootstrap_servers, self._producer_config["bootstrap.servers"]]
-            )
-        else:
-            self._producer_config["bootstrap.servers"] = bootstrap_servers
-
-        logger.debug("producer configuration: %s", self._producer_config)
-
-        if on_delivery is None:
-            self.on_delivery = default_delivery_report
-        else:
-            self.on_delivery = on_delivery
-
-        self._flush_on_stop_doc = flush_on_stop_doc
-        self._producer = Producer(self._producer_config)
-        self._serializer = serializer
-
     def __str__(self):
         safe_config = dict(self._producer_config)
         if "sasl.password" in safe_config:
@@ -299,26 +263,9 @@ class RecPublisher:
             ")"
         )
 
-    def get_cluster_metadata(self, timeout=5.0):
-        """
-        Return information about the Kafka cluster and this Publisher's topic.
-
-        Parameters
-        ----------
-        timeout: float, optional
-            maximum time in seconds to wait before timing out, -1 for infinite timeout,
-            default is 5.0s
-
-        Returns
-        -------
-        cluster_metadata: confluent_kafka.admin.ClusterMetadata
-        """
-        cluster_metadata = self._producer.list_topics(topic=self.topic, timeout=timeout)
-        return cluster_metadata
-
     def suggest(self, payload):
         """
-        Publish the specified name and document as a Kafka message.
+        Publish the payload as a Kafka message.
 
         Flushing the Producer on every stop document guarantees
         that _at the latest_ all documents for a run will be delivered
@@ -362,13 +309,5 @@ class RecPublisher:
         # poll for delivery reports
         self._producer.poll(0)
 
-    def flush(self):
-        """
-        Flush all buffered messages to the broker(s).
-        """
-        logger.debug(
-            "flushing Kafka Producer for topic '%s' and key '%s'",
-            self.topic,
-            self._key,
-        )
-        self._producer.flush()
+    def __call__(self, name, doc):
+        raise NotImplementedError("This method is stripped from this subclass")

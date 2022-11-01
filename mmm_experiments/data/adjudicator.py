@@ -4,11 +4,12 @@ from confluent_kafka import Consumer
 
 from threading import Lock, Thread
 from collections import defaultdict
+from bluesky_kafka import BlueskyConsumer
 
 logger = logging.getLogger(name="mmm.kafka")
 
 
-class RecConsumer:
+class RecConsumer(BlueskyConsumer):
     """
     Processes reccomendations from (many) agents.
 
@@ -55,105 +56,6 @@ class RecConsumer:
     >>>    )
     >>> bluesky_consumer.start(continue_polling=continue_polling)  # runs until continue_polling() returns False
     """
-
-    def __init__(
-        self,
-        topics,
-        bootstrap_servers,
-        group_id,
-        consumer_config=None,
-        polling_duration=0.05,
-        deserializer=msgpack.loads,
-        process_document=None,
-    ):
-        self._topics = topics
-        self._bootstrap_servers = bootstrap_servers
-        self._group_id = group_id
-        self._deserializer = deserializer
-        self._process_document = process_document
-        self.polling_duration = polling_duration
-
-        self._consumer_config = dict()
-        if consumer_config is not None:
-            self._consumer_config.update(consumer_config)
-
-        if "group.id" in self._consumer_config:
-            raise ValueError("do not specify 'group.id' in consumer_config, use only the 'group_id' argument")
-        else:
-            self._consumer_config["group.id"] = group_id
-
-        if "bootstrap.servers" in self._consumer_config:
-            self._consumer_config["bootstrap.servers"] = ",".join(
-                [bootstrap_servers, self._consumer_config["bootstrap.servers"]]
-            )
-        else:
-            self._consumer_config["bootstrap.servers"] = bootstrap_servers
-
-        logger.debug(
-            "BlueskyConsumer configuration:\n%s",
-            self._consumer_config,
-        )
-        logger.debug("subscribing to Kafka topic(s): %s", topics)
-
-        self.consumer = Consumer(self._consumer_config)
-        self.consumer.subscribe(topics=topics)
-        self.closed = False
-
-    def _poll(self, *, continue_polling=None, work_during_wait=None):
-        """
-        This method defines the polling loop in which messages are pulled from
-        one or more Kafka brokers and processed with self.process().
-
-        The polling loop will be interrupted if self.process() returns False.
-
-        Parameters
-        ----------
-        continue_polling: function(), optional
-            a parameter-less function called before every call to Consumer.poll,
-            the intention is to allow an outside force to stop the Consumer
-
-        work_during_wait : function(), optional
-            a parameter-less function to be called between calls to Consumer.poll
-        """
-
-        if continue_polling is None:
-
-            def never_stop_polling():
-                return True
-
-            continue_polling = never_stop_polling
-
-        if work_during_wait is None:
-
-            def no_work_during_wait():
-                # do nothing between message deliveries
-                pass
-
-            work_during_wait = no_work_during_wait
-
-        while continue_polling():
-            try:
-                msg = self.consumer.poll(self.polling_duration)
-                if msg is None:
-                    # no message was delivered
-                    # do some work before polling again
-                    work_during_wait()
-                elif msg.error():
-                    logger.error("Kafka Consumer error: %s", msg.error())
-                elif self.process(msg) is False:
-                    logger.info("breaking out of polling loop after process(msg) returned False")
-                    break
-                else:
-                    # poll again
-                    pass
-            except KeyboardInterrupt as keyboard_interrupt:
-                logger.exception(keyboard_interrupt)
-                raise
-            except Exception as exc:
-                logger.exception(exc)
-
-        logger.warning("continue_polling() returned False")
-        self.stop()
 
     def process(self, msg):
         """
@@ -215,41 +117,6 @@ class RecConsumer:
         else:
             continue_polling = self._process_document(self.consumer, topic, payload)
             return continue_polling
-
-    def start(self, continue_polling=None, work_during_wait=None):
-        """
-        Start the polling loop.
-
-        Parameters
-        ----------
-        continue_polling: function(), optional
-            a parameter-less function called before every call to Consumer.poll,
-            the intention is to allow outside logic to stop the Consumer
-
-        work_during_wait : function(), optional
-            a parameter-less function to be called between calls to Consumer.poll
-
-        """
-        if self.closed:
-            raise RuntimeError(
-                "This BlueskyConsumer has already been "
-                "started and interrupted. Create a fresh "
-                f"instance with {repr(self)}"
-            )
-        try:
-            self._poll(continue_polling=continue_polling, work_during_wait=work_during_wait)
-        except Exception:
-            self.stop()
-            raise
-        finally:
-            self.stop()
-
-    def stop(self):
-        """
-        Close the underlying consumer.
-        """
-        self.consumer.close()
-        self.closed = True
 
 
 class LatestNews(RecConsumer):
