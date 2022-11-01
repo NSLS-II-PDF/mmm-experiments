@@ -7,12 +7,13 @@ from typing import Literal, Optional, Sequence, Tuple, Union
 import databroker.client
 import nslsii
 import numpy as np
-from bluesky_kafka import RemoteDispatcher
 from bluesky_live.run_builder import RunBuilder
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http import REManagerAPI
 from tiled.client import from_profile
 from xkcdpass import xkcd_password as xp
+
+from mmm_experiments.data.kafka_consumer import AgentConsumer
 
 PASSWORD_LIST = xp.generate_wordlist(wordfile=xp.locate_wordfile(), min_length=3, max_length=8)
 
@@ -42,15 +43,22 @@ class Agent(ABC):
         logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
-        self.kafka_dispatcher = RemoteDispatcher(
-            topics=[f"{beamline_tla}.bluesky.pdfstream.documents"]
+        # Each agent attends to a data topic and a directive topic. (PDF to an analyzed data topic)
+        topics = [
+            f"{beamline_tla}.mmm.bluesky.agents",
+            f"{beamline_tla}.bluesky.pdfstream.documents"
             if beamline_tla == "pdf"
-            else [f"{beamline_tla}.bluesky.runengine.documents"],  # PDF will attend to analyized data
+            else f"{beamline_tla}.bluesky.runengine.documents",
+        ]
+        self.kafka_consumer = AgentConsumer(
+            topics=topics,
             bootstrap_servers=",".join(self.kafka_config["bootstrap_servers"]),
             group_id=self.kafka_group_id,
             consumer_config=self.kafka_config["runengine_producer_config"],
+            agent=self,
+            beamline_tla=beamline_tla,
+            bluesky_callbacks=(self._on_stop_router),
         )
-        self.agent_dispatcher = ...  # TODO: Kafka dispatcher specifically for agent control mechanisms
         logging.debug("Kafka setup sucessfully.")
         self.exp_catalog = (
             from_profile("pdf_bluesky_sandbox") if beamline_tla == "pdf" else from_profile(beamline_tla)
@@ -276,6 +284,13 @@ class Agent(ABC):
             self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
         self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
 
+    def add_suggestions(self, batch_size: int):
+        """Calls ask, adds suggestions to queue, and writes out event"""
+        logging.debug("Issuing ask and adding to the queue.")
+        doc = self._add_to_queue(batch_size)
+        self._check_queue_and_start()
+        self._write_event("ask", doc)
+
     @staticmethod
     def trigger_condition(uid) -> bool:
         return True
@@ -306,35 +321,7 @@ class Agent(ABC):
 
             # Ask
             if self._ask_on_tell:
-                logging.debug("Issuing ask and adding to the queue.")
-                doc = self._add_to_queue(1)
-                self._check_queue_and_start()
-                self._write_event("ask", doc)
-
-    def _agent_dispatcher_router(self, name, doc):
-        """Internal router to check document name against self.
-        An agent will only respond to command documents named in a stream with its uid.
-        """
-        uid = str(self.agent_uid)
-        if name == uid or name == uid[:8]:
-            try:
-                self.agent_dispatcher_callback(doc)
-            except NotImplementedError:
-                logging.debug(
-                    "Agent dispatcher received document named for agent, but no callback is implemented."
-                )
-
-    def agent_dispatcher_callback(self, doc):
-        """Callback to be called on appropriately named documents received from Kafka.
-        This would be a reasonable place to bring the human into the loop by triggering
-        `report` or `ask` or other functionality.
-        """
-        if doc["action"] == "ask":
-            self._add_to_queue(doc.get("batch_size", 1))
-        elif doc["action"] == "report":
-            report_doc = self.report(**doc.get("action_kwargs", {}))
-            if report_doc:
-                self._write_event("report", doc)
+                self.add_suggestions(1)
 
     def start(self, ask_at_start=False):
         logging.debug("Issuing start document and start listening to Kafka")
@@ -343,11 +330,8 @@ class Agent(ABC):
         logging.info(f"Agent uuid={self.builder._cache.start_doc['agent_uid']}")
         logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
         if ask_at_start:
-            self._add_to_queue(1)
-            self._check_queue_and_start()
-        self.kafka_dispatcher.subscribe(self._on_stop_router)
-        self.agent_dispatcher.subscribe(self._agent_dispatcher_router)
-        self.kafka_dispatcher.start()
+            self.add_suggestions(1)
+        self.kafka_consumer.start()
 
     def restart(self, uid):
         """
@@ -393,7 +377,7 @@ class Agent(ABC):
         logging.debug("Attempting agent stop.")
         self.builder.close(exit_status=exit_status, reason=reason)
         self.agent_catalog.v1.insert("stop", self.builder._cache.stop_doc)
-        self.kafka_dispatcher.stop()
+        self.kafka_consumer.stop()
         logging.info(
             f"Stopped agent with exit status {exit_status.upper()}"
             f"{(' for reason: ' + reason) if reason else '.'}"
