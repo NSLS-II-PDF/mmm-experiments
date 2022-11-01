@@ -2,7 +2,8 @@ import msgpack
 import logging
 from confluent_kafka import Consumer
 
-from therading import Lock
+from threading import Lock, Thread
+from collections import defaultdict
 
 logger = logging.getLogger(name="mmm.kafka")
 
@@ -171,6 +172,7 @@ class RecConsumer:
         continue_polling : bool
             return True to continue polling, False to break out of the polling loop
         """
+        print(msg.value())
         payload = self._deserializer(msg.value())
         logger.debug(
             f"{type(self)} deserialized payload with " "topic %s for Kafka Consumer name: %s doc: %s",
@@ -248,3 +250,33 @@ class RecConsumer:
         """
         self.consumer.close()
         self.closed = True
+
+
+class LatestNews(RecConsumer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._lock = Lock()
+        self._by_agent = {}
+        self._thread = None
+
+    def process_document(self, topic, payload):
+        with self._lock:
+            # TODO by beamline level union?
+            # TODO provide a beamline-first view?
+            print(payload["agent"], payload["publish_uid"])
+            self._by_agent[payload["agent"]] = payload
+        return True
+
+    @property
+    def by_agent(self):
+        with self._lock:
+            # TODO worry about deepcopy
+            ret = dict(self._by_agent)
+        return ret
+
+    def yeet(self):
+        if self._thread is not None:
+            raise RuntimeError("you can only yeet once")
+
+        self._thread = Thread(target=self.start)
+        self._thread.start()
