@@ -15,6 +15,12 @@ except ImportError:
 def make_argparser():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
+        "--agent-name",
+        required=True,
+        help="Name of the agent in reporting",
+        type=str,
+    )
+    arg_parser.add_argument(
         "--beamline",
         required=False,
         help="Beamline TLA where we are.  Used for format kafka topic name and client group name.",
@@ -56,7 +62,7 @@ def add_kafka_publisher_args(arg_parser):
     return arg_parser
 
 
-def start_kafka(parameters, *targets):
+def start_kafka(parameters, kafka_config, *targets):
     # handle default target
     def print_message(name, doc):
         print(f"{datetime.datetime.now().isoformat()} document: {name}\n" f"contents: {pprint.pformat(doc)}\n")
@@ -72,18 +78,8 @@ def start_kafka(parameters, *targets):
     if group_base is None:
         group_base = str(uuid.uuid4())
 
-    # read the config file
-    if "BLUESKY_KAFKA_CONFIG_PATH" in os.environ:
-        bluesky_kafka_config_path = os.environ["BLUESKY_KAFKA_CONFIG_PATH"]
-    else:
-        bluesky_kafka_config_path = "/etc/bluesky/kafka.yml"
-
-    kafka_config = _read_bluesky_kafka_config_file(config_file_path=bluesky_kafka_config_path)
-
-    # this consumer should not be in a group with other consumers
-    #   so generate a unique consumer group id for it
     group_id = f"{group_base}-{beamline_acronym}-{document_source}"
-    cconfig = kafka_config["runengine_producer_config"]
+    cconfig = dict(kafka_config["runengine_producer_config"])
     cconfig["auto.offset.reset"] = auto_offset_reset
     kafka_dispatcher = RemoteDispatcher(
         topics=[f"{beamline_acronym}.{document_source}.documents"],
