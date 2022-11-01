@@ -96,3 +96,17 @@ def start_kafka(parameters, *targets):
         kafka_dispatcher.subscribe(target)
 
     kafka_dispatcher.start()
+
+
+def format_suggestion(agent_name, **beamlines):
+    out = {"agent": agent_name, "publish_uid": str(uuid.uuid4())}
+
+    suggestions = {}
+    for beamline, requests in beamlines.items():
+        work_list = suggestions[beamline] = []
+        for req in requests:
+            work_list.append({"uid": str(uuid.uuid4()), "request": req})
+
+    out["suggestions"] = suggestions
+
+    return out
