@@ -335,11 +335,11 @@ class RecPublisher:
 
             {
               'agent': agent_name,
+              'publish_uid':
               'suggestions': {
                TLA: [
-                      {...},   # this part of schema left as
-                      {...},   # as implemenation detail for now
-                       ...
+                      {'uid': ..., 'request': {...}},
+                      { ... }
                     ],
                TLB: [...]
                }
