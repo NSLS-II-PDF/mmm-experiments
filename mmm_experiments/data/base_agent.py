@@ -1,8 +1,10 @@
 import argparse
 import datetime
-from bluesky_kafka import RemoteDispatcher
+import os
 import pprint
 import uuid
+
+from bluesky_kafka import RemoteDispatcher
 
 try:
     from nslsii import _read_bluesky_kafka_config_file
@@ -71,7 +73,12 @@ def start_kafka(parameters, *targets):
         group_base = str(uuid.uuid4())
 
     # read the config file
-    kafka_config = _read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
+    if "BLUESKY_KAFKA_CONFIG_PATH" in os.environ:
+        bluesky_kafka_config_path = os.environ["BLUESKY_KAFKA_CONFIG_PATH"]
+    else:
+        bluesky_kafka_config_path = "/etc/bluesky/kafka.yml"
+
+    kafka_config = _read_bluesky_kafka_config_file(config_file_path=bluesky_kafka_config_path)
 
     # this consumer should not be in a group with other consumers
     #   so generate a unique consumer group id for it

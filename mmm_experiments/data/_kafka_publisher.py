@@ -2,6 +2,18 @@ from pathlib import Path
 import os
 import logging
 from collections import namedtuple
+import msgpack
+
+from confluent_kafka import Producer
+
+from bluesky_kafka import default_delivery_report
+
+try:
+    from nslsii import _read_bluesky_kafka_config_file
+except ImportError:
+    from nslsii.kafka_utils import _read_bluesky_kafka_config_file
+
+logger = logging.getLogger(name="mmm.kafka")
 
 """
 A namedtuple for holding details of the publisher created by
@@ -126,55 +138,6 @@ def _subscribe_kafka_publisher(
     return subscribe_kafka_publisher_details
 
 
-def _read_bluesky_kafka_config_file(config_file_path):
-    """Read a YAML file of Kafka producer configuration details.
-
-    The file must have three top-level entries as shown:
-    ---
-        abort_run_on_kafka_exception: true
-        bootstrap_servers:
-            - kafka1:9092
-            - kafka2:9092
-        runengine_producer_config:
-            acks: 0
-            message.timeout.ms: 3000
-            compression.codec: snappy
-
-    Parameters
-    ----------
-    config_file_path: str
-        path to the YAML file of Kafka producer configuration details
-
-    Returns
-    -------
-    dict of configuration details
-    """
-    import yaml
-
-    # read the Kafka Producer configuration details
-    if Path(config_file_path).exists():
-        with open(config_file_path) as f:
-            bluesky_kafka_config = yaml.safe_load(f)
-    else:
-        raise FileNotFoundError(config_file_path)
-
-    required_sections = (
-        "abort_run_on_kafka_exception",
-        "bootstrap_servers",
-        "runengine_producer_config",
-    )
-    missing_required_sections = [
-        required_section for required_section in required_sections if required_section not in bluesky_kafka_config
-    ]
-
-    if missing_required_sections:
-        raise Exception(
-            f"Bluesky Kafka configuration file '{config_file_path}' is missing required section(s) `{missing_required_sections}`"
-        )
-
-    return bluesky_kafka_config
-
-
 """
 A namedtuple for holding details of the publisher created by
 _subscribe_kafka_queue_thread_publisher.
@@ -227,3 +190,185 @@ def configure_kafka_publisher(RE, beamline_name, override_config_path=None, **kw
     )
 
     return bluesky_kafka_configuration, kafka_publisher_details
+
+
+class RecPublisher:
+    """
+    A class for publishing Agent reccomendations to a kafka topic.
+
+    Reference: https://github.com/confluentinc/confluent-kafka-python/issues/137
+
+    There is no default configuration. A reasonable production configuration for use
+    with bluesky is Kafka's "idempotent" configuration specified by
+        producer_config = {
+            "enable.idempotence": True
+        }
+    This is short for
+        producer_config = {
+            "acks": "all",                              # acknowledge only after all brokers receive a message
+            "retries": sys.maxsize,                     # retry indefinitely
+            "max.in.flight.requests.per.connection": 5  # maintain message order *when retrying*
+        }
+
+    This means three things:
+        1) delivery acknowledgement is not sent until all replicate brokers have received a message
+        2) message delivery will be retried indefinitely (messages will not be dropped by the Producer)
+        3) message order will be maintained during retries
+
+    A reasonable testing configuration is
+        producer_config={
+            "acks": 1,
+            "request.timeout.ms": 5000,
+        }
+
+    Parameters
+    ----------
+    topic : str
+        Topic to which all messages will be published.
+    bootstrap_servers: str
+        Comma-delimited list of Kafka server addresses as a string such as ``'127.0.0.1:9092'``.
+    key : str
+        Kafka "key" string. Specify a key to maintain message order. If None is specified
+        no ordering will be imposed on messages.
+    producer_config : dict, optional
+        Dictionary configuration information used to construct the underlying Kafka Producer.
+    on_delivery : function(err, msg), optional
+        A function to be called after a message has been delivered or after delivery has
+        permanently failed.
+    serializer : function, optional
+        Function to serialize data. Default is pickle.dumps.
+
+    Example
+    -------
+    Publish documents from a RunEngine to a Kafka broker on localhost port 9092.
+
+    >>> publisher = RecPublisher(
+    >>>     topic="suggestion.box",
+    >>>     bootstrap_servers='localhost:9092',
+    >>>     key="abcdef"
+    >>> )
+    >>> publisher.suggest({...})
+    """
+
+    def __init__(
+        self,
+        topic,
+        bootstrap_servers,
+        key,
+        producer_config=None,
+        on_delivery=None,
+        flush_on_stop_doc=False,
+        serializer=msgpack.dumps,
+    ):
+        self.topic = topic
+        self._bootstrap_servers = bootstrap_servers
+        self._key = key
+        # in the case that "bootstrap.servers" is included in producer_config
+        # combine it with the bootstrap_servers argument
+        self._producer_config = dict()
+        if producer_config is not None:
+            self._producer_config.update(producer_config)
+        if "bootstrap.servers" in self._producer_config:
+            self._producer_config["bootstrap.servers"] = ",".join(
+                [bootstrap_servers, self._producer_config["bootstrap.servers"]]
+            )
+        else:
+            self._producer_config["bootstrap.servers"] = bootstrap_servers
+
+        logger.debug("producer configuration: %s", self._producer_config)
+
+        if on_delivery is None:
+            self.on_delivery = default_delivery_report
+        else:
+            self.on_delivery = on_delivery
+
+        self._flush_on_stop_doc = flush_on_stop_doc
+        self._producer = Producer(self._producer_config)
+        self._serializer = serializer
+
+    def __str__(self):
+        safe_config = dict(self._producer_config)
+        if "sasl.password" in safe_config:
+            safe_config["sasl.password"] = "****"
+        return (
+            "bluesky_kafka.Publisher("
+            f"topic='{self.topic}',"
+            f"key='{self._key}',"
+            f"bootstrap_servers='{self._bootstrap_servers}'"
+            f"producer_config='{safe_config}'"
+            ")"
+        )
+
+    def get_cluster_metadata(self, timeout=5.0):
+        """
+        Return information about the Kafka cluster and this Publisher's topic.
+
+        Parameters
+        ----------
+        timeout: float, optional
+            maximum time in seconds to wait before timing out, -1 for infinite timeout,
+            default is 5.0s
+
+        Returns
+        -------
+        cluster_metadata: confluent_kafka.admin.ClusterMetadata
+        """
+        cluster_metadata = self._producer.list_topics(topic=self.topic, timeout=timeout)
+        return cluster_metadata
+
+    def suggest(self, payload):
+        """
+        Publish the specified name and document as a Kafka message.
+
+        Flushing the Producer on every stop document guarantees
+        that _at the latest_ all documents for a run will be delivered
+        to the broker(s) at the end of the run. Without this flush
+        the documents for a short run may wait for some time to be
+        delivered. The flush call is blocking so it is a bad idea to
+        flush after every document but reasonable to flush after a
+        stop document since this is the end of the run.
+
+        Parameters
+        ----------
+        payload: dict
+           Shaped like ::
+
+            {
+              'agent': agent_name,
+              'suggestions': {
+               TLA: [
+                      {...},   # this part of schema left as
+                      {...},   # as implemenation detail for now
+                       ...
+                    ],
+               TLB: [...]
+               }
+              'agent_sate': {...}  # unconstrainet
+        }
+
+        """
+        logger.debug(
+            "publishing suggestions to Kafka broker(s):" "topic: '%s'\n" "key:   '%s'\n" "payload:  '%s'",
+            self.topic,
+            self._key,
+            payload,
+        )
+        self._producer.produce(
+            topic=self.topic,
+            key=self._key,
+            value=self._serializer(payload),
+            on_delivery=self.on_delivery,
+        )
+        # poll for delivery reports
+        self._producer.poll(0)
+
+    def flush(self):
+        """
+        Flush all buffered messages to the broker(s).
+        """
+        logger.debug(
+            "flushing Kafka Producer for topic '%s' and key '%s'",
+            self.topic,
+            self._key,
+        )
+        self._producer.flush()
