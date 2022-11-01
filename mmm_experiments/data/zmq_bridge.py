@@ -1,14 +1,10 @@
 import argparse
-from copy import deepcopy
-import pprint
-from tiled.client import from_profile
 import datetime
+import pprint
+from copy import deepcopy
 
 from bluesky.callbacks.zmq import RemoteDispatcher
-
-from event_model import RunRouter
-from suitcase.msgpack import Serializer
-from zmq import PROTOCOL_ERROR_ZMTP_MALFORMED_COMMAND_MESSAGE
+from tiled.client import from_profile
 
 # need a bit more flexibility than is currently in nslsii, this file is
 # vendored + a bit more plumbing
@@ -43,13 +39,6 @@ def main():
         required=False,
         help="The source of documents. Used to format kafka topic name ",
         default="pdfstream",
-        type=str,
-    )
-    arg_parser.add_argument(
-        "--msgpack-path",
-        required=False,
-        help="A direcotry to dump a msgpack log of the documents seen to.",
-        default="",
         type=str,
     )
     args = arg_parser.parse_args()
@@ -91,13 +80,10 @@ def transform_factory(striped_keys):
     return strip_keys
 
 
-def start(zmq_address, zmq_prefix, beamline, document_source, msgpack_path):
+def start(zmq_address, zmq_prefix, beamline, document_source):
 
     # make the from zmq dispatcher
     rd = RemoteDispatcher(zmq_address, prefix=zmq_prefix.encode("ascii"))
-    if msgpack_path:
-        dump_rr = RunRouter(factories=[lambda name, doc: ([Serializer(msgpack_path)], [])])
-        rd.subscribe(dump_rr)
     rd.subscribe(
         lambda name, doc: print(name, datetime.datetime.fromtimestamp(doc["time"]).isoformat())
         if name in {"start", "stop"}
