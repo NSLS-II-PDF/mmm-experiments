@@ -36,8 +36,14 @@ class LatestNews(BlueskyConsumer):
         self._thread = None
         self._tla = tla
         self._sb = SwitchBoardBackend(switchboard_prefix, name="sb")
-        self._sb.publish.subscribe(self.on_process)
         self._dequeueset = DequeSet()
+
+    def start(self):
+        self._cid = self._sb.publish.subscribe(self.on_process)
+        try:
+            super().start()
+        finally:
+            self._sb.publish.unsubscribe(self._cid)
 
     def on_process(self, value, **kwargs):
         if value == 0:
