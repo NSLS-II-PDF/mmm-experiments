@@ -296,6 +296,11 @@ class Agent(ABC):
         self._check_queue_and_start()
         self._write_event("ask", doc)
 
+    def generate_report(self, **kwargs):
+        logging.debug("Issuing report request and writing to Mongo.")
+        doc = self.report(**kwargs)
+        self._write_event("report", doc)
+
     @staticmethod
     def trigger_condition(uid) -> bool:
         return True
