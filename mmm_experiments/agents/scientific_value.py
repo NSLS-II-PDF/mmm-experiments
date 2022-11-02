@@ -83,6 +83,10 @@ class ScientificValueAgent(Agent, ABC):
         beamline_tla: str,
         length_scale: Optional[float] = None,
         metadata: Optional[dict] = None,
+        y_distance_function: Optional[callable] = None,
+        optimize_acqf_kwargs: dict = {
+            "q": 1, "num_restarts": 5, "raw_samples": 20
+        },
         device="cpu",
     ):
         super().__init__(beamline_tla=beamline_tla, metadata=metadata)
@@ -94,6 +98,8 @@ class ScientificValueAgent(Agent, ABC):
         self._positions_cache = []
         self._value_cache = []
         self._bounds = torch.tensor(bounds).to(self._device).float()
+        self._y_distance_function = y_distance_function
+        self._optimize_acqf_kwargs = optimize_acqf_kwargs
 
     def tell(self, position, observation):
         """Takes the position of the motor and an arbitrary observation which
@@ -127,10 +133,7 @@ class ScientificValueAgent(Agent, ABC):
 
         return dict(position=position, observation=observation, value=V.squeeze()[-1])
 
-    def ask(
-        self,
-        optimize_acqf_kwargs={"q": 1, "num_restarts": 5, "raw_samples": 20},
-    ):
+    def ask(self, optimize_acqf_kwargs=None):
         train_x = torch.tensor(self._positions_cache, dtype=torch.float)
         train_x = train_x.view(-1, self._in_dim)
         train_x = train_x.to(self._device)
@@ -141,6 +144,9 @@ class ScientificValueAgent(Agent, ABC):
         gp = SingleTaskGP(train_x, train_y).to(self.device)
         mll = ExactMarginalLogLikelihood(gp.likelihood, gp).to(self.device)
         fit_gpytorch_model(mll)
+
+        if optimize_acqf_kwargs is None:
+            optimize_acqf_kwargs = self._optimize_acqf_kwargs
 
         if optimize_acqf_kwargs["q"] == 1:
             acq = ExpectedImprovement(gp, best_f=torch.max(train_y).item())
