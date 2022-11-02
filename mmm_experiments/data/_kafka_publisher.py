@@ -1,12 +1,6 @@
 from pathlib import Path
 import os
 import logging
-from collections import namedtuple
-import msgpack
-
-from confluent_kafka import Producer
-
-from bluesky_kafka import default_delivery_report, Publisher
 
 try:
     from nslsii import _read_bluesky_kafka_config_file
@@ -19,10 +13,6 @@ logger = logging.getLogger(name="mmm.kafka")
 A namedtuple for holding details of the publisher created by
 _subscribe_kafka_publisher.
 """
-_SubscribeKafkaPublisherDetails = namedtuple(
-    "SubscribeKafkaPublisherDetails",
-    {"beamline_topic", "bootstrap_servers", "producer_config", "re_subscribe_token"},
-)
 
 
 def _subscribe_kafka_publisher(
@@ -190,124 +180,3 @@ def configure_kafka_publisher(RE, beamline_name, override_config_path=None, **kw
     )
 
     return bluesky_kafka_configuration, kafka_publisher_details
-
-
-class RecPublisher(Publisher):
-    """
-    A class for publishing Agent reccomendations to a kafka topic.
-
-    Reference: https://github.com/confluentinc/confluent-kafka-python/issues/137
-
-    There is no default configuration. A reasonable production configuration for use
-    with bluesky is Kafka's "idempotent" configuration specified by
-        producer_config = {
-            "enable.idempotence": True
-        }
-    This is short for
-        producer_config = {
-            "acks": "all",                              # acknowledge only after all brokers receive a message
-            "retries": sys.maxsize,                     # retry indefinitely
-            "max.in.flight.requests.per.connection": 5  # maintain message order *when retrying*
-        }
-
-    This means three things:
-        1) delivery acknowledgement is not sent until all replicate brokers have received a message
-        2) message delivery will be retried indefinitely (messages will not be dropped by the Producer)
-        3) message order will be maintained during retries
-
-    A reasonable testing configuration is
-        producer_config={
-            "acks": 1,
-            "request.timeout.ms": 5000,
-        }
-
-    Parameters
-    ----------
-    topic : str
-        Topic to which all messages will be published.
-    bootstrap_servers: str
-        Comma-delimited list of Kafka server addresses as a string such as ``'127.0.0.1:9092'``.
-    key : str
-        Kafka "key" string. Specify a key to maintain message order. If None is specified
-        no ordering will be imposed on messages.
-    producer_config : dict, optional
-        Dictionary configuration information used to construct the underlying Kafka Producer.
-    on_delivery : function(err, msg), optional
-        A function to be called after a message has been delivered or after delivery has
-        permanently failed.
-    serializer : function, optional
-        Function to serialize data. Default is pickle.dumps.
-
-    Example
-    -------
-    Publish documents from a RunEngine to a Kafka broker on localhost port 9092.
-
-    >>> publisher = RecPublisher(
-    >>>     topic="suggestion.box",
-    >>>     bootstrap_servers='localhost:9092',
-    >>>     key="abcdef"
-    >>> )
-    >>> publisher.suggest({...})
-    """
-
-    def __str__(self):
-        safe_config = dict(self._producer_config)
-        if "sasl.password" in safe_config:
-            safe_config["sasl.password"] = "****"
-        return (
-            "bluesky_kafka.Publisher("
-            f"topic='{self.topic}',"
-            f"key='{self._key}',"
-            f"bootstrap_servers='{self._bootstrap_servers}'"
-            f"producer_config='{safe_config}'"
-            ")"
-        )
-
-    def suggest(self, payload):
-        """
-        Publish the payload as a Kafka message.
-
-        Flushing the Producer on every stop document guarantees
-        that _at the latest_ all documents for a run will be delivered
-        to the broker(s) at the end of the run. Without this flush
-        the documents for a short run may wait for some time to be
-        delivered. The flush call is blocking so it is a bad idea to
-        flush after every document but reasonable to flush after a
-        stop document since this is the end of the run.
-
-        Parameters
-        ----------
-        payload: dict
-           Shaped like ::
-
-            {
-              'agent': agent_name,
-              'publish_uid':
-              'suggestions': {
-               TLA: [
-                      {'uid': ..., 'request': {...}},
-                      { ... }
-                    ],
-               TLB: [...]
-               }
-              'agent_sate': {...}  # unconstrainet
-        }
-
-        """
-        logger.debug(
-            "publishing suggestions to Kafka broker(s):" "topic: '%s'\n" "key:   '%s'\n" "payload:  '%s'",
-            self.topic,
-            self._key,
-            payload,
-        )
-        self._producer.produce(
-            topic=self.topic,
-            key=self._key,
-            value=self._serializer(payload),
-            on_delivery=self.on_delivery,
-        )
-        # poll for delivery reports
-        self._producer.poll(0)
-
-    def __call__(self, name, doc):
-        raise NotImplementedError("This method is stripped from this subclass")

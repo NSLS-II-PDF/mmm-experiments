@@ -3,7 +3,7 @@ from itertools import count
 import json
 
 from base_agent import format_suggestion, start_kafka, make_argparser, add_kafka_publisher_args
-from _kafka_publisher import RecPublisher
+from bluesky_kafka import Publisher
 
 try:
     from nslsii import _read_bluesky_kafka_config_file
@@ -17,8 +17,8 @@ def make_cb(rec, agent_name):
     def cb(name, doc):
         print(name)
         if name == "stop":
-            rec.suggest(
-                format_suggestion(
+            rec(
+                *format_suggestion(
                     agent_name,
                     PDF=[next(cc) for j in range(2)],
                     BMM=[-next(cc) for j in range(3)],
@@ -41,7 +41,7 @@ def main():
         bluesky_kafka_config_path = "/etc/bluesky/kafka.yml"
     kafka_config = _read_bluesky_kafka_config_file(config_file_path=bluesky_kafka_config_path)
 
-    rec = RecPublisher(
+    rec = Publisher(
         p.data_sink,
         ",".join(kafka_config["bootstrap_servers"]),
         "abc",
