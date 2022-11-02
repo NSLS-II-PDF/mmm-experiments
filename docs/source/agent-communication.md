@@ -21,6 +21,7 @@ Methods should be packaged into documents/dictionaries with these specific keys:
 - restart
 - generate_report
 - add_suggestions
+- tell_agent_by_uid
 
 A bluesky plan to send documents to the appropriate kafka node is present in  mmm_experiments/agents/_plans.py. 
 

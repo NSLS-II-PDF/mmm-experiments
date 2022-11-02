@@ -2,7 +2,7 @@ import logging
 import sys
 import uuid
 from abc import ABC, abstractmethod
-from typing import Literal, Optional, Sequence, Tuple, Union
+from typing import Iterable, Literal, Optional, Sequence, Tuple, Union
 
 import databroker.client
 import nslsii
@@ -383,6 +383,16 @@ class Agent(ABC):
                 self.generate_report(**self.default_report_kwargs)
             if self.ask_on_tell:
                 self.add_suggestions(1)
+
+    def tell_agent_by_uid(self, uids: Iterable):
+        """Give an agent an iterable of uids to learn from.
+        This is an optional behavior for priming an agent without a complete restart."""
+        for uid in uids:
+            run = self.exp_catalog[uid]
+            independent_variable, dependent_variable = self.unpack_run(run)
+            doc = self.tell(independent_variable, dependent_variable)
+            doc["exp_uid"] = [uid]
+            self._write_event("tell", doc)
 
     def start(self, ask_at_start=False):
         logging.debug("Issuing start document and start listening to Kafka")
