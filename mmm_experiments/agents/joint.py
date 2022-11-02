@@ -100,6 +100,7 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
         kwargs = BMMAgent.measurement_plan_kwargs(self, point)
         kwargs.setdefault("md", {})
         kwargs["md"]["agent"] = f"MonarchPDFSubjectBMM_{self.model_method}"
+        kwargs["md"].update(self.default_plan_md)
         return kwargs
 
     def get_wafer_background(self):
@@ -189,7 +190,9 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
         return ["Grid_X", point + self.subject_origin, 30]
 
     def subject_plan_kwargs(self, point) -> dict:
-        return {"sample_number": 17}
+        md = self.default_plan_md
+        md["relative_position"] = point
+        return {"sample_number": 17, "md": md}
 
     def measurement_plan_kwargs(self, point) -> dict:
         kwargs = super().measurement_plan_kwargs(point)
