@@ -13,7 +13,13 @@ from scipy.spatial import distance_matrix
 from .base import Agent
 
 
-def scientific_value_function(X, Y, sd=None, multiplier=1.0):
+def scientific_value_function(
+    X,
+    Y,
+    sd=None,
+    multiplier=1.0,
+    y_distance_function=lambda Y: distance_matrix(Y, Y)
+):
     """The value of two datasets, X and Y. Both X and Y must have the same
     number of rows. The returned result is a value of value for each of the
     data points.
@@ -31,6 +37,12 @@ def scientific_value_function(X, Y, sd=None, multiplier=1.0):
     multiplier : float, optional
         Multiplies the automatically derived length scale if ``sd`` is
         ``None``.
+    y_distance_function : callable, optional
+        A callable function which takes the array ``Y`` as input and returns
+        an N x N array in which the ith row and jth column is the distance
+        measure between points i and j. Defaults to
+        ``scipy.spatial.distance_matrix`` with its default kwargs (i.e. it is
+        the L2 norm).
 
     Returns
     -------
@@ -41,12 +53,11 @@ def scientific_value_function(X, Y, sd=None, multiplier=1.0):
     X_dist = distance_matrix(X, X)
 
     if sd is None:
-        # Automatic determination
         distance = X_dist.copy()
         distance[distance == 0.0] = np.inf
         sd = distance.min(axis=1).reshape(1, -1) * multiplier
 
-    Y_dist = distance_matrix(Y, Y)
+    Y_dist = y_distance_function(Y)
 
     v = Y_dist * np.exp(-(X_dist**2) / sd**2 / 2.0)
 
