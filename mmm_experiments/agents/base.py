@@ -83,7 +83,7 @@ class Agent(ABC):
         self.metadata["kafka_group_id"] = self.kafka_group_id
         self.metadata[
             "agent_name"
-        ] = self.agent_uid = f"{self.name}-{xp.generate_xkcdpassword(PASSWORD_LIST, numwords=2, delimiter='-')}"
+        ] = self.agent_name = f"{self.name}-{xp.generate_xkcdpassword(PASSWORD_LIST, numwords=2, delimiter='-')}"
         self._ask_on_tell = ask_on_tell
         self._report_on_tell = report_on_tell
         self.default_report_kwargs = {} if default_report_kwargs is None else default_report_kwargs
@@ -384,7 +384,7 @@ class Agent(ABC):
         logging.debug("Issuing start document and start listening to Kafka")
         self.builder = RunBuilder(metadata=self.metadata)
         self.agent_catalog.v1.insert("start", self.builder._cache.start_doc)
-        logging.info(f"Agent uuid={self.builder._cache.start_doc['agent_uid']}")
+        logging.info(f"Agent name={self.builder._cache.start_doc['agent_name']}")
         logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
         if ask_at_start:
             self.add_suggestions(1)
