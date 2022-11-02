@@ -83,7 +83,7 @@ class AgentConsumer(BlueskyConsumer):
         keywords = topic.split(".")
         if self.tla not in keywords:
             return True
-        if ("mmm" in keywords and "agents" in keywords) and name == self.agent.agent_uid:
+        if ("mmm" in keywords and "agents" in keywords) and name == self.agent.agent_name:
 
             action = doc["action"]
             args = doc["args"]
@@ -92,11 +92,11 @@ class AgentConsumer(BlueskyConsumer):
                 getattr(self.agent, action)(*args, **kwargs)
             except AttributeError as e:
                 warnings.warn(
-                    f"Unavailable action sent to agent {self.agent.agent_uid} on topic: {topic}\n" f"{e}"
+                    f"Unavailable action sent to agent {self.agent.agent_name} on topic: {topic}\n" f"{e}"
                 )
             except TypeError as e:
                 warnings.warn(
-                    f"Type error for {action} sent to agent {self.agent.agent_uid} on topic: {topic}\n"
+                    f"Type error for {action} sent to agent {self.agent.agent_name} on topic: {topic}\n"
                     f"Are you sure your args and kwargs were appropriate?\n"
                     f"Args received: {args}\n"
                     f"Kwargs received: {kwargs}\n"
