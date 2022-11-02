@@ -310,7 +310,7 @@ class Agent(ABC):
                 **kwargs,
             )
             r = self.re_manager.item_add(plan, pos=self.queue_add_position)
-            logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
+            logging.debug(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
         return doc
 
     def _check_queue_and_start(self):
