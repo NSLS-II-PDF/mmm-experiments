@@ -13,6 +13,57 @@ from scipy.spatial import distance_matrix
 from .base import Agent
 
 
+def next_closest_raster_scan_point(
+    proposed_points,
+    observed_points,
+    possible_coordinates,
+    eps=1e-8
+):
+    """A helper function which determines the closest grid point for every
+    proposed points, under the constraint that the proposed point is not
+    present in the currently observed points, given possible coordinates.
+    
+    Parameters
+    ----------
+    proposed_points : array_like
+        The proposed points. Should be of shape N x d, where d is the dimension
+        of the space (e.g. 2-dimensional for a 2d raster). N is the number of
+        proposed points (i.e. the batch size).
+    observed_points : array_like
+        Points that have been previously observed. N1 x d, where N1 is the
+        number of previously observed points.
+    possible_coordinates : array_like
+        A grid of possible coordinates, options to choose from. N2 x d, where
+        N2 is the number of coordinates on the grid.
+    eps : float, optional
+        The cutoff for determining that two points are the same, as computed
+        by the L2 norm via scipy's ``distance_matrix``.
+
+    Returns
+    -------
+    numpy.ndarray
+        The new proposed points.
+    """
+
+    assert proposed_points.shape[1] == observed_points.shape[1]
+    assert proposed_points.shape[1] == possible_coordinates.shape[1]
+
+    D2 = distance_matrix(observed_points, possible_coordinates) > eps
+    D2 = np.all(D2, axis=0)
+
+    actual_points = []
+    for possible_point in proposed_points:
+        p = possible_point.reshape(1, -1)
+        D = distance_matrix(p, possible_coordinates).squeeze()
+        argsorted = np.argsort(D)
+        for index in argsorted:
+            if D2[index]:
+                actual_points.append(possible_coordinates[index])
+                break
+
+    return np.array(actual_points)
+
+
 def scientific_value_function(
     X,
     Y,
@@ -87,6 +138,7 @@ class ScientificValueAgent(Agent, ABC):
         optimize_acqf_kwargs: dict = {
             "q": 1, "num_restarts": 5, "raw_samples": 20
         },
+        possible_coordinates: Optional[np.ndarray] = None,
         device="cpu",
     ):
         super().__init__(beamline_tla=beamline_tla, metadata=metadata)
@@ -100,6 +152,11 @@ class ScientificValueAgent(Agent, ABC):
         self._bounds = torch.tensor(bounds).to(self._device).float()
         self._y_distance_function = y_distance_function
         self._optimize_acqf_kwargs = optimize_acqf_kwargs
+
+        # Possible coordinatse should be an array of shape L x d, where L is
+        # the number of possible coordinates and d is the dimension of the
+        # space (i.e. it's 2 if we have a 2-dimensional scanning surface)
+        self._possible_coordinates = possible_coordinates
 
     def tell(self, position, observation):
         """Takes the position of the motor and an arbitrary observation which
@@ -158,6 +215,14 @@ class ScientificValueAgent(Agent, ABC):
             bounds=self._bounds,
             **optimize_acqf_kwargs,
         )
+
+        if self._possible_coordinates is not None:
+            next_points = next_closest_raster_scan_point(
+                next_points,
+                train_x.detach().numpy(),
+                self._possible_coordinates,
+                eps=1e-8
+            )
 
         if optimize_acqf_kwargs["q"] == 1:
             next_points = [float(next_points.to("cpu"))]
