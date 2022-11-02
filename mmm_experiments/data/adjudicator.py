@@ -1,4 +1,5 @@
 import logging
+from collections import deque
 
 from threading import Lock, Thread
 from bluesky_kafka import BlueskyConsumer
@@ -6,6 +7,25 @@ from bluesky_kafka import BlueskyConsumer
 from mmm_experiments.devices.switchboard import SwitchBoardBackend
 
 logger = logging.getLogger(name="mmm.kafka")
+
+
+class DequeSet:
+    def __init__(self, maxlen=100):
+        self._set = set()
+        self._dequeue = deque()
+        self._maxlen = maxlen
+
+    def __contains__(self, d):
+        return d in self._set
+
+    def append(self, d):
+        if d in self:
+            raise ValueError("do not add the same value twice")
+        self._set.add(d)
+        self._dequeue.append(d)
+        while len(self._dequeue) >= self._maxlen:
+            discared = self._dequeue.popleft()
+            self._set.remove(discared)
 
 
 class LatestNews(BlueskyConsumer):
@@ -17,6 +37,7 @@ class LatestNews(BlueskyConsumer):
         self._tla = tla
         self._sb = SwitchBoardBackend(switchboard_prefix, name="sb")
         self._sb.publish.subscribe(self.on_process)
+        self._dequeueset = DequeSet()
 
     def on_process(self, value, **kwargs):
         if value == 0:
@@ -85,9 +106,16 @@ class AgentSelector(LatestNews):
         if agent not in by_agent:
             print(f"{agent} not one we have heard of.  Know about {list(by_agent)}")
         else:
+            # TODO make this a generator
             for suggestion in by_agent[agent]["suggestions"][self._tla]:
+                if suggestion["uid"] in self._dequeueset:
+                    continue
                 # TODO add to queue here!
                 print(f"I suggest {suggestion}")
+                self._dequeueset.append(suggestion["uid"])
+                break
+            else:
+                print("I am out of ideas")
 
 
 if __name__ == "__main__":
