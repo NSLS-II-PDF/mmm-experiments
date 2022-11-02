@@ -81,7 +81,6 @@ class AgentConsumer(BlueskyConsumer):
 
     def process_document(self, topic, name, doc):
         keywords = topic.split(".")
-        print(topic, name, doc, keywords)
         if self.tla not in keywords:
             return True
         if ("mmm" in keywords and "agents" in keywords) and name == self.agent.agent_uid:
