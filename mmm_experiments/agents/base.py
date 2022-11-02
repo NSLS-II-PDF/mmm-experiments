@@ -303,6 +303,8 @@ class Agent(ABC):
             )
             r = self.re_manager.item_add(plan, pos=self.queue_add_position)
             logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
+        doc["exp_catalog"] = doc.get("exp_catalog", self.exp_catalog)
+        doc["agent_catalog"] = doc.get("agent_catalog", self.agent_catalog)
         return doc
 
     def _check_queue_and_start(self):
