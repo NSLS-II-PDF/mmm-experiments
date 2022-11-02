@@ -301,9 +301,11 @@ class Agent(ABC):
 
         """
         doc, next_points = self.ask(batch_size)
+        doc.setdefault("uid", str(uuid.uuid4()))
         for point in next_points:
             kwargs = self.measurement_plan_kwargs(point)
             kwargs["md"].update(self.default_plan_md)
+            kwargs["md"]["agent_ask_uid"] = doc["uid"]
             plan = BPlan(
                 self.measurement_plan_name,
                 *self.measurement_plan_args(point),
