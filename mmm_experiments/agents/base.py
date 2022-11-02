@@ -37,9 +37,21 @@ class Agent(ABC):
         To create a truly passive agent, it is best to implement ask as a method that does nothing.
         To create an agent that only suggests new points periodically or on another trigger, `ask_on_tell`
         should be set to False.
+    report_on_tell : bool
+        Whether to create a report every time an agent is told about new data.
+    default_report_kwargs : dict
+        Default kwargs for generating automatic reports.
     """
 
-    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None, ask_on_tell: bool = True):
+    def __init__(
+        self,
+        *,
+        beamline_tla: str,
+        metadata: Optional[dict] = None,
+        ask_on_tell: bool = True,
+        report_on_tell: bool = False,
+        default_report_kwargs=None,
+    ):
         logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
@@ -70,9 +82,11 @@ class Agent(ABC):
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
         self.metadata[
-            "agent_uid"
+            "agent_name"
         ] = self.agent_uid = f"{self.name}-{xp.generate_xkcdpassword(PASSWORD_LIST, numwords=2, delimiter='-')}"
-        self.metadata["ask_on_tell"] = self._ask_on_tell = ask_on_tell
+        self._ask_on_tell = ask_on_tell
+        self._report_on_tell = report_on_tell
+        self.default_report_kwargs = {} if default_report_kwargs is None else default_report_kwargs
         self.builder = None
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
         self.re_manager.set_authorization_key(api_key=self.api_key)
@@ -230,6 +244,37 @@ class Agent(ABC):
     def queue_add_position(self, position: Union[int, Literal["front", "back"]]):
         self._queue_add_position = position
 
+    def update_priority(self, position: Union[int, Literal["front", "back"]]):
+        self.queue_add_position = position
+
+    @property
+    def ask_on_tell(self) -> bool:
+        return self._ask_on_tell
+
+    @ask_on_tell.setter
+    def ask_on_tell(self, flag: bool):
+        self._ask_on_tell = flag
+
+    @property
+    def report_on_tell(self) -> bool:
+        return self._ask_on_tell
+
+    @report_on_tell.setter
+    def report_on_tell(self, flag: bool):
+        self._report_on_tell = flag
+
+    def enable_continuous_reporting(self):
+        self.report_on_tell = True
+
+    def disable_continuous_reporting(self):
+        self.report_on_tell = False
+
+    def enable_continuous_suggesting(self):
+        self.ask_on_tell = True
+
+    def disable_continuous_suggesting(self):
+        self.ask_on_tell = False
+
     @property
     def name(self) -> str:
         """Short string name"""
@@ -330,7 +375,9 @@ class Agent(ABC):
             self._write_event("tell", doc)
 
             # Ask
-            if self._ask_on_tell:
+            if self.report_on_tell:
+                self.generate_report(**self.default_report_kwargs)
+            if self.ask_on_tell:
                 self.add_suggestions(1)
 
     def start(self, ask_at_start=False):
