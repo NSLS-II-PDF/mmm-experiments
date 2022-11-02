@@ -264,15 +264,19 @@ class Agent(ABC):
         self._report_on_tell = flag
 
     def enable_continuous_reporting(self):
+        """Enable agent to report each time it receives data."""
         self.report_on_tell = True
 
     def disable_continuous_reporting(self):
+        """Disable agent to report each time it receives data."""
         self.report_on_tell = False
 
     def enable_continuous_suggesting(self):
+        """Enable agent to suggest new points to the queue each time it receives data."""
         self.ask_on_tell = True
 
     def disable_continuous_suggesting(self):
+        """Disable agent to suggest new points to the queue each time it receives data."""
         self.ask_on_tell = False
 
     @property
