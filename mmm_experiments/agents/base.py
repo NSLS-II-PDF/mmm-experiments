@@ -521,7 +521,7 @@ class DrowsyAgent(Agent, ABC):
     def ask(self, batch_size: int) -> Tuple[dict, Sequence]:
         self.counter += 1
         logging.debug(f"Counter={self.counter}")
-        return dict(batch_size=[batch_size]), [0.0]
+        return dict(batch_size=[batch_size]), [0.0 for _ in range(batch_size)]
 
     def report(self):
         pass
