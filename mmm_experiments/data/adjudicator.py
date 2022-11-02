@@ -114,11 +114,11 @@ class AgentSelector(LatestNews):
         else:
             # TODO make this a generator
             for suggestion in by_agent[agent]["suggestions"][self._tla]:
-                if suggestion["uid"] in self._dequeueset:
+                if suggestion["suggestion_uid"] in self._dequeueset:
                     continue
                 # TODO add to queue here!
                 print(f"I suggest {suggestion}")
-                self._dequeueset.append(suggestion["uid"])
+                self._dequeueset.append(suggestion["suggestion_uid"])
                 break
             else:
                 print("I am out of ideas")

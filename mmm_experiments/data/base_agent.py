@@ -101,7 +101,13 @@ def format_suggestion(agent_name, **beamlines):
     for beamline, requests in beamlines.items():
         work_list = suggestions[beamline] = []
         for req in requests:
-            work_list.append({"uid": str(uuid.uuid4()), "request": req})
+            # TODO less ad-hoc schema validation
+            rreq = dict(req)
+            rreq.setdefault("args", ())
+            rreq.setdefault("kwargs", {})
+            if set(rreq) != {"plan", "args", "kwargs"}:
+                raise ValueError(f"request {req!r} does not match schema")
+            work_list.append({"suggestion_uid": str(uuid.uuid4()), "request": rreq})
 
     out["suggestions"] = suggestions
 
