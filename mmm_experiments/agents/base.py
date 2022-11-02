@@ -91,6 +91,12 @@ class Agent(ABC):
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
         self.re_manager.set_authorization_key(api_key=self.api_key)
         self._queue_add_position = "back"
+        self.default_plan_md = dict(
+            agent_name=self.agent_name,
+            agent_class=str(type(self)),
+            tiled_data_profile=self.exp_catalog,
+            tiled_agent_profile=self.agent_catalog,
+        )
 
     @property
     @abstractmethod
@@ -296,15 +302,15 @@ class Agent(ABC):
         """
         doc, next_points = self.ask(batch_size)
         for point in next_points:
+            kwargs = self.measurement_plan_kwargs(point)
+            kwargs["md"].update(self.default_plan_md)
             plan = BPlan(
                 self.measurement_plan_name,
                 *self.measurement_plan_args(point),
-                **self.measurement_plan_kwargs(point),
+                **kwargs,
             )
             r = self.re_manager.item_add(plan, pos=self.queue_add_position)
             logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
-        doc["exp_catalog"] = doc.get("exp_catalog", self.exp_catalog)
-        doc["agent_catalog"] = doc.get("agent_catalog", self.agent_catalog)
         return doc
 
     def _check_queue_and_start(self):
