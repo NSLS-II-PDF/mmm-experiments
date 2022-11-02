@@ -18,7 +18,7 @@ def scientific_value_function(
     Y,
     sd=None,
     multiplier=1.0,
-    y_distance_function=lambda Y: distance_matrix(Y, Y)
+    y_distance_function=None
 ):
     """The value of two datasets, X and Y. Both X and Y must have the same
     number of rows. The returned result is a value of value for each of the
@@ -57,7 +57,12 @@ def scientific_value_function(
         distance[distance == 0.0] = np.inf
         sd = distance.min(axis=1).reshape(1, -1) * multiplier
 
-    Y_dist = y_distance_function(Y)
+    # We can make this more pythonic but it makes sense in this case to keep
+    # the default behavior explicit
+    if y_distance_function is None:
+        Y_dist = distance_matrix(Y, Y)
+    else:
+        Y_dist = y_distance_function(Y)
 
     v = Y_dist * np.exp(-(X_dist**2) / sd**2 / 2.0)
 
