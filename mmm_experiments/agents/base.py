@@ -76,6 +76,7 @@ class Agent(ABC):
         self.builder = None
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
         self.re_manager.set_authorization_key(api_key=self.api_key)
+        self._queue_add_position = "back"
 
     @property
     @abstractmethod
@@ -222,8 +223,12 @@ class Agent(ABC):
         return tell_emits
 
     @property
-    def _queue_add_position(self) -> Union[int, Literal["front", "back"]]:
-        return "back"
+    def queue_add_position(self) -> Union[int, Literal["front", "back"]]:
+        return self._queue_add_position
+
+    @queue_add_position.setter
+    def queue_add_position(self, position: Union[int, Literal["front", "back"]]):
+        self._queue_add_position = position
 
     @property
     def name(self) -> str:
@@ -251,7 +256,7 @@ class Agent(ABC):
                 *self.measurement_plan_args(point),
                 **self.measurement_plan_kwargs(point),
             )
-            r = self.re_manager.item_add(plan, pos=self._queue_add_position)
+            r = self.re_manager.item_add(plan, pos=self.queue_add_position)
             logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
         return doc
 
