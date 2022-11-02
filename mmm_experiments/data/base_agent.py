@@ -105,4 +105,4 @@ def format_suggestion(agent_name, **beamlines):
 
     out["suggestions"] = suggestions
 
-    return out
+    return ("agent_suggestions", out)
