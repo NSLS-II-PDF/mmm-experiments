@@ -57,7 +57,7 @@ class Agent(ABC):
             consumer_config=self.kafka_config["runengine_producer_config"],
             agent=self,
             beamline_tla=beamline_tla,
-            bluesky_callbacks=(self._on_stop_router),
+            bluesky_callbacks=(self._on_stop_router,),
         )
         logging.debug("Kafka setup sucessfully.")
         self.exp_catalog = (
