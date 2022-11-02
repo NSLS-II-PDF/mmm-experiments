@@ -1,3 +1,6 @@
+import logging
+from typing import Optional
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,13 +10,17 @@ from constrainedmf.nmf.utils import iterative_nmf
 
 from mmm_experiments.viz.plotting import independent_waterfall, min_max_normalize
 
+logger = logging.getLogger(name="mmm.ml_mixins")
+
 
 class CMFMixin:
     """Mixin for Agents to have an agent perform constrained matrix factorization on the incoming data.
     Sorts the dataset  by independent variable (position) for easy visualization.
     """
 
-    def __init__(self, *, num_components, **kwargs):
+    AVAILABLE_ASK_MODES = {"autoconstrained", "unconstrained"}
+
+    def __init__(self, *, num_components: int, ask_mode: str, **kwargs):
         super().__init__(**kwargs)
         self.independent_cache = []
         self.dependent_cache = []
@@ -22,13 +29,31 @@ class CMFMixin:
         self.current_residuals = None
         self.sorted_positions, self.sorted_dataset = None, None
         self._current_num_components = num_components
+        self._ask_mode = ask_mode.lower() if ask_mode.lower() in self.AVAILABLE_ASK_MODES else "unconstrained"
 
     @property
     def num_components(self):
         return self._current_num_components
 
+    @num_components.setter
+    def num_components(self, n: int):
+        if n < 2:
+            logger.warning(f"Number of proposed components {n} less than minimum 2. No change made.")
+        else:
+            self._current_num_components = n
+
+    def update_num_components(self, num_components: int):
+        """Convenience method exposed to plans for updating via kafka."""
+        self.num_components = num_components
+
     def tell(self, position, y) -> dict:
-        relative_position = position - self.measurement_origin
+        try:
+            origin = self.measurement_origin
+        except AttributeError:
+            self.measurement_origin = 0.0
+            origin = self.measurement_origin
+            logger.warning(f"No origin detected for CMF agent {self}. Setting to 0. ")
+        relative_position = position - origin
         self.independent_cache.append(relative_position)
         self.dependent_cache.append(np.atleast_2d(y))
         self.sorted_positions, self.sorted_dataset = zip(
@@ -65,12 +90,41 @@ class CMFMixin:
             self._calculate_nmf(**kwargs)
         return dict(
             num_components=[self.num_components],
-            components=[self.current_components],
-            weights=[self.current_weights],
-            residuals=[self.current_residuals],
+            components=self.current_components,
+            weights=self.current_weights,
+            residuals=self.current_residuals,
             sorted_dataset=self.sorted_dataset,
             sorted_positions=self.sorted_positions,
         )
+
+    @property
+    def ask_mode(self):
+        return self._ask_mode
+
+    @ask_mode.setter
+    def ask_mode(self, mode: str):
+        if mode.lower() not in self.AVAILABLE_ASK_MODES:
+            logger.warning(f"Mode: {mode} is not an available ask mode for a CMF mixin. No change made.")
+        else:
+            self._ask_mode = mode.lower()
+
+    def core_component_positions(self, batch_size: Optional[int] = None):
+        """Generate an ask that returns a batch of locations nearest the derived components.
+        Will optionally trim that set of locations to a batch size in an ordered list.
+        """
+        if self.ask_mode == "autoconstrained":
+            self._calculate_autoconstrained_nmf()
+        elif self.ask_mode == "unconstrained":
+            self._calculate_nmf()
+        else:
+            logger.warning(f"Unrecognized CMF mode {self.ask_mode}. I don't know how you got here...")
+        points = []
+        batch_size = batch_size or self.num_components
+        for i, component in enumerate(self.current_components.T):
+            if i == batch_size:
+                break
+            points.append(self.sorted_positions[(self.sorted_dataset - component).sum(axis=-1).argmin()])
+        return points
 
     @staticmethod
     def plot_from_report(doc):
