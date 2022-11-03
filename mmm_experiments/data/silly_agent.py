@@ -15,13 +15,13 @@ def make_cb(rec, agent_name):
     cc = count()
 
     def cb(name, doc):
-        print(name)
         if name == "stop":
+            print("suggesting!")
             rec(
                 *format_suggestion(
                     agent_name,
-                    PDF=[next(cc) for j in range(2)],
-                    BMM=[-next(cc) for j in range(3)],
+                    PDF=[{"plan": "pdf_mmm", "args": (next(cc),)} for j in range(2)],
+                    BMM=[{"plan": "bmm_mmm", "args": (next(cc),)} for j in range(3)],
                 )
             )
 
