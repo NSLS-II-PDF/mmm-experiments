@@ -6,7 +6,7 @@ tiled[all]==0.1.0a60
 bluesky_kafka
 databroker==2.0.0b2
 xca @ git+https://github.com/maffettone/xca@inline_training#egg=xca
-constrainedmf
+constrained-matrix-factorization
 botorch
 xraylarch
 bluesky-queueserver-api
