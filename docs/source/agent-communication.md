@@ -25,6 +25,22 @@ Methods should be packaged into documents/dictionaries with these specific keys:
 
 A bluesky plan to send documents to the appropriate kafka node is present in  mmm_experiments/agents/_plans.py.
 
+### Some Kafka caveats associated with consuming distinct topics
+Kafka preserves no guarantee of ordering between two topics, and (cannot poll topics individually)[https://stackoverflow.com/questions/55798164/kafka-have-each-poll-call-only-consume-from-one-topic-at-a-time].
+To avoid having to thread multiple consumers in a single agent (the process taken below for adjudicating), we must stay
+aware of (race conditions)[https://www.cloudkarafka.com/blog/a-dive-into-multi-topic-subscriptions-with-apache-kafka.html].
+In general, an agent will be told about all data that appears on its Kafka topics, and will pause loading/unpacking data
+while executing a command like `generate_report`, since this happens in the same process.
+In short summary: 
+1. If your `tell` is slower than your experiment, your processing is bad. Go the route of pdfstream.
+2. If your `ask` is slower than your experiment, consider having it in an open loop, 
+and triggering at select times for a minor a delay in data loading. I.e. `disable_continuous_suggsting`.
+3. The above goes the same for an expensive `report`, though this is less likely. 
+4. If your `ask` is much slower than the experiment time, to the point that you would lose messages from the Kafka topic
+queue, it should be a fully external process. In any case, the agent must bne very clever to justify this,
+or an experiment must be so expensive that it is justifiable. 
+
+
 ## Multiple Agents Adjudicated by a Third Party
 
 If multiple agents are is use, or one agent is continuously making many
