@@ -23,6 +23,7 @@ from .base import (
     RandomAgentMixin,
     SequentialAgentMixin,
 )
+from .ml_mixins import CMFMixin
 
 Representation = namedtuple("Representation", "probabilities shannon_entropy reconstruction_loss")
 
@@ -119,6 +120,24 @@ class RandomAgent(RandomAgentMixin, PDFAgent):
 
 class GeometricAgent(GeometricResolutionMixin, PDFAgent):
     """Geometric series for resolution at PDF"""
+
+
+class CMFAgent(CMFMixin, PDFAgent):
+    """
+    Constrained Matrix Factorization agent that will decompose an ordered dataset on `ask` or `report`.
+
+    num_components : int
+        Number of components to initially use. Can be updated via `update_num_components`
+        through the agent Kafka interface.
+    ask_mode : str
+        One of AVAILABLE_ASK_MODES.
+        autoconstrained : iteratively perform CMF by adding constraints drawn from the dataset
+        unconstrained : plain old NMF
+    kwargs
+    """
+
+    def __init__(self, *, num_components: int, ask_mode: str, **kwargs):
+        super().__init__(num_components=num_components, ask_mode=ask_mode, **kwargs)
 
 
 class XCAAgent(PDFAgent):

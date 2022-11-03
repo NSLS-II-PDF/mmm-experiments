@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -14,13 +14,26 @@ logger = logging.getLogger(name="mmm.ml_mixins")
 
 
 class CMFMixin:
-    """Mixin for Agents to have an agent perform constrained matrix factorization on the incoming data.
-    Sorts the dataset  by independent variable (position) for easy visualization.
-    """
-
     AVAILABLE_ASK_MODES = {"autoconstrained", "unconstrained"}
 
     def __init__(self, *, num_components: int, ask_mode: str, **kwargs):
+        """
+        Constrained Matrix Factorization mixin for agents.base.Agent children
+
+        Sorts the dataset  by independent variable (position) for easy visualization.
+
+        Parameters
+        ----------
+        num_components : int
+            Number of components to initially use. Can be updated via `update_num_components`
+            through the agent Kafka interface.
+        ask_mode : str
+            One of AVAILABLE_ASK_MODES.
+            autoconstrained : iteratively perform CMF by adding constraints drawn from the dataset
+            unconstrained : plain old NMF
+        kwargs :
+            Keyword arguments to pass down the MRO. Likely to PDFAgent, BMMAgent or the like.
+        """
         super().__init__(**kwargs)
         self.independent_cache = []
         self.dependent_cache = []
@@ -47,13 +60,7 @@ class CMFMixin:
         self.num_components = num_components
 
     def tell(self, position, y) -> dict:
-        try:
-            origin = self.measurement_origin
-        except AttributeError:
-            self.measurement_origin = 0.0
-            origin = self.measurement_origin
-            logger.warning(f"No origin detected for CMF agent {self}. Setting to 0. ")
-        relative_position = position - origin
+        relative_position = position - self.measurement_origin
         self.independent_cache.append(relative_position)
         self.dependent_cache.append(np.atleast_2d(y))
         self.sorted_positions, self.sorted_dataset = zip(
@@ -90,11 +97,11 @@ class CMFMixin:
             self._calculate_nmf(**kwargs)
         return dict(
             num_components=[self.num_components],
-            components=self.current_components,
-            weights=self.current_weights,
-            residuals=self.current_residuals,
-            sorted_dataset=self.sorted_dataset,
-            sorted_positions=self.sorted_positions,
+            components=[self.current_components],
+            weights=[self.current_weights],
+            residuals=[self.current_residuals],
+            sorted_dataset=[self.sorted_dataset],
+            sorted_positions=[self.sorted_positions],
         )
 
     @property
@@ -108,7 +115,7 @@ class CMFMixin:
         else:
             self._ask_mode = mode.lower()
 
-    def core_component_positions(self, batch_size: Optional[int] = None):
+    def derived_component_positions(self, batch_size: Optional[int] = None):
         """Generate an ask that returns a batch of locations nearest the derived components.
         Will optionally trim that set of locations to a batch size in an ordered list.
         """
@@ -125,6 +132,21 @@ class CMFMixin:
                 break
             points.append(self.sorted_positions[(self.sorted_dataset - component).sum(axis=-1).argmin()])
         return points
+
+    def ask(self, batch_size: Optional[int] = None) -> Tuple[dict, Sequence]:
+        points = self.derived_component_positions(batch_size)
+        doc = dict(
+            num_components=[self.num_components],
+            components=[self.current_components],
+            weights=[self.current_weights],
+            residuals=[self.current_residuals],
+            sorted_dataset=[self.sorted_dataset],
+            sorted_positions=[self.sorted_positions],
+            ask_mode=[self.ask_mode],
+            batch_size=[batch_size],
+            suggestions=[points],
+        )
+        return doc, points
 
     @staticmethod
     def plot_from_report(doc):
