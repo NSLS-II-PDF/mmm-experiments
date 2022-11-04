@@ -294,6 +294,7 @@ class XCAMixin:
         return doc
 
     def report(self):
+        """Return document of all relevant caches for plotting. Expected shapes/types in comments."""
         return dict(
             absolute_positions=[[pos + self.measurement_origin for pos in self.independent_cache]],  # List[float]
             relative_positions=[self.independent_cache],  # List[float]
