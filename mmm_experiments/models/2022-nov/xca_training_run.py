@@ -19,10 +19,10 @@ kwargs = {
     "bkg_2": (-1e-4, 1e-4),
     "bkg_1": (-1e-4, 1e-4),
     "bkg_0": (0, 1e-3),
-    "march_range": (0.5, 1.0),
+    "march_range": (0.0, 1.0),
     "isotropic_expansion": (-0.05, 0.05),
 }
-shape_limit = 1e-3
+shape_limit = 1e-2
 
 cif_paths = list((Path(__file__).parent / "phases").glob("*.cif"))
 
