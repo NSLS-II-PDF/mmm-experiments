@@ -45,6 +45,10 @@ class CMFMixin:
         self._ask_mode = ask_mode.lower() if ask_mode.lower() in self.AVAILABLE_ASK_MODES else "unconstrained"
 
     @property
+    def name(self):
+        return "cmf"
+
+    @property
     def num_components(self):
         return self._current_num_components
 
