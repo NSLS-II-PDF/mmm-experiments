@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Optional
 
 import numpy as np
@@ -9,8 +8,6 @@ from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
 from gpytorch.mlls import ExactMarginalLogLikelihood
 from scipy.spatial import distance_matrix
-
-from .base import Agent
 
 
 def next_closest_raster_scan_point(
@@ -120,36 +117,28 @@ def scientific_value_function(
     return v.mean(axis=1)
 
 
-class ScientificValueAgent(Agent, ABC):
-    """This is a jack of all trades agent which is general to any type of
+class ScientificValueAgentMixin:
+    """This is a jack-of-all-trades agent which is general to any type of
     observation (i.e. any beamline). This is a _parameter free_ method, meaning
     that the user does not need to set any parameters explicitly, though one
-    can manually set a length scale if desired."""
+    can manually set a length scale if desired.
+
+    Assumes that ``device``, ``relative_bounds`` and ``measurement_origin`` are
+    defined as attributes.
+    """
 
     def __init__(
         self,
-        bounds: list,
-        in_dim: int,
-        out_dim: int,
-        beamline_tla: str,
         length_scale: Optional[float] = None,
-        metadata: Optional[dict] = None,
         y_distance_function: Optional[callable] = None,
         optimize_acqf_kwargs: dict = {
             "q": 1, "num_restarts": 5, "raw_samples": 20
         },
         possible_coordinates: Optional[np.ndarray] = None,
-        device="cpu",
+        **kwargs
     ):
-        super().__init__(beamline_tla=beamline_tla, metadata=metadata)
-        self._in_dim = in_dim
-        self._out_dim = out_dim
+        super().__init__(**kwargs)
         self._length_scale = length_scale
-        self._device = device
-        self._observations_cache = []
-        self._positions_cache = []
-        self._value_cache = []
-        self._bounds = torch.tensor(bounds).to(self._device).float()
         self._y_distance_function = y_distance_function
         self._optimize_acqf_kwargs = optimize_acqf_kwargs
 
@@ -157,6 +146,12 @@ class ScientificValueAgent(Agent, ABC):
         # the number of possible coordinates and d is the dimension of the
         # space (i.e. it's 2 if we have a 2-dimensional scanning surface)
         self._possible_coordinates = possible_coordinates
+
+        # Caches for the results
+        self._observations_cache = []
+        self._positions_cache = []
+        self._relative_positions_cache = []
+        self._value_cache = []
 
     def tell(self, position, observation):
         """Takes the position of the motor and an arbitrary observation which
@@ -177,25 +172,36 @@ class ScientificValueAgent(Agent, ABC):
         dict
         """
 
+        # Using the relative position for all learning
+        relative_position = position - self.measurement_origin
+
         self._positions_cache.append(position)
+        self._relative_positions_cache.append(relative_position)
         self._observations_cache.append(observation)
 
         # Compute the value
-        X = np.array(self._positions_cache).reshape(-1, self._in_dim)
-        Y = np.array(self._observations_cache).reshape(-1, self._out_dim)
+        X = np.array(self._relative_positions_cache)
+        Y = np.array(self._observations_cache)
         V = scientific_value_function(X, Y, sd=self._length_scale)
 
         # The value is a scalar
         V = V.reshape(-1, 1)
 
-        return dict(position=position, observation=observation, value=V.squeeze()[-1])
+        return dict(
+            position=[position],
+            rel_position=[relative_position],
+            observation=observation,
+            cache_len=[len(self._relative_positions_cache)],
+            value=V.squeeze()[-1]
+        )
 
     def ask(self, optimize_acqf_kwargs=None):
-        train_x = torch.tensor(self._positions_cache, dtype=torch.float)
-        train_x = train_x.view(-1, self._in_dim)
+
+        train_x = torch.tensor(
+            self._relative_positions_cache, dtype=torch.float
+        )
         train_x = train_x.to(self._device)
         train_y = torch.tensor(self._observations_cache, dtype=torch.float)
-        train_y = train_y.view(-1, self._out_dim)
         train_y = train_y.to(self._device)
 
         gp = SingleTaskGP(train_x, train_y).to(self.device)
@@ -212,7 +218,7 @@ class ScientificValueAgent(Agent, ABC):
 
         next_points, acq_value = optimize_acqf(
             acq,
-            bounds=self._bounds,
+            bounds=self.relative_bounds,
             **optimize_acqf_kwargs,
         )
 
