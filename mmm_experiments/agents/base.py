@@ -2,16 +2,20 @@ import logging
 import sys
 import uuid
 from abc import ABC, abstractmethod
-from typing import Literal, Optional, Sequence, Tuple, Union
+from typing import Iterable, Literal, Optional, Sequence, Tuple, Union
 
 import databroker.client
 import nslsii
 import numpy as np
-from bluesky_kafka import RemoteDispatcher
 from bluesky_live.run_builder import RunBuilder
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http import REManagerAPI
 from tiled.client import from_profile
+from xkcdpass import xkcd_password as xp
+
+from mmm_experiments.data.kafka_consumer import AgentConsumer
+
+PASSWORD_LIST = xp.generate_wordlist(wordfile=xp.locate_wordfile(), min_length=3, max_length=8)
 
 
 class Agent(ABC):
@@ -21,19 +25,51 @@ class Agent(ABC):
 
     Base agent sets up a kafka subscription to listen to new stop documents, a catalog to read for experiments,
     a catalog to write agent status to, and a manager API for the HTTP server.
+
+    Parameters
+    ----------
+    beamline_tla: str
+        Beamline three letter acronym. Used in setting up the connection to kafka and tiled server
+    metadata: Optional[dict]
+        Optional extra metadata to add
+    ask_on_tell: bool
+        Whether to ask for new points every time an agent is told about new data.
+        To create a truly passive agent, it is best to implement ask as a method that does nothing.
+        To create an agent that only suggests new points periodically or on another trigger, `ask_on_tell`
+        should be set to False.
+    report_on_tell : bool
+        Whether to create a report every time an agent is told about new data.
+    default_report_kwargs : dict
+        Default kwargs for generating automatic reports.
     """
 
-    def __init__(self, *, beamline_tla: str, metadata: Optional[dict] = None):
+    def __init__(
+        self,
+        *,
+        beamline_tla: str,
+        metadata: Optional[dict] = None,
+        ask_on_tell: bool = True,
+        report_on_tell: bool = False,
+        default_report_kwargs=None,
+    ):
         logging.debug("Initializing Agent")
         self.kafka_config = nslsii._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         self.kafka_group_id = f"echo-{beamline_tla}-{str(uuid.uuid4())[:8]}"
-        self.kafka_dispatcher = RemoteDispatcher(
-            topics=[f"{beamline_tla}.bluesky.pdfstream.documents"]
+        # Each agent attends to a data topic and a directive topic. (PDF to an analyzed data topic)
+        topics = [
+            f"{beamline_tla}.mmm.bluesky.agents",
+            f"{beamline_tla}.bluesky.pdfstream.documents"
             if beamline_tla == "pdf"
-            else [f"{beamline_tla}.bluesky.runengine.documents"],  # PDF will attend to analyized data
+            else f"{beamline_tla}.bluesky.runengine.documents",
+        ]
+        self.kafka_consumer = AgentConsumer(
+            topics=topics,
             bootstrap_servers=",".join(self.kafka_config["bootstrap_servers"]),
             group_id=self.kafka_group_id,
             consumer_config=self.kafka_config["runengine_producer_config"],
+            agent=self,
+            beamline_tla=beamline_tla,
+            bluesky_callbacks=(self._on_stop_router,),
         )
         logging.debug("Kafka setup sucessfully.")
         self.exp_catalog = (
@@ -45,9 +81,16 @@ class Agent(ABC):
         self.metadata = metadata or {}
         self.metadata["beamline_tla"] = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
+        self.metadata[
+            "agent_name"
+        ] = self.agent_name = f"{self.name}-{xp.generate_xkcdpassword(PASSWORD_LIST, numwords=2, delimiter='-')}"
+        self._ask_on_tell = ask_on_tell
+        self._report_on_tell = report_on_tell
+        self.default_report_kwargs = {} if default_report_kwargs is None else default_report_kwargs
         self.builder = None
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
         self.re_manager.set_authorization_key(api_key=self.api_key)
+        self._queue_add_position = "back"
 
     @property
     @abstractmethod
@@ -160,10 +203,12 @@ class Agent(ABC):
         """
         ...
 
-    def report(self):
+    def report(self, **kwargs) -> dict:
         """
         Create a report given the data observed by the agent.
         This could be potentially implemented in the base class to write document stream.
+        Additional functionality for converting the report dict into an image or formatted report is
+        the duty of the child class.
         """
 
         raise NotImplementedError
@@ -192,8 +237,52 @@ class Agent(ABC):
         return tell_emits
 
     @property
-    def _queue_add_position(self) -> Union[int, Literal["front", "back"]]:
-        return "back"
+    def queue_add_position(self) -> Union[int, Literal["front", "back"]]:
+        return self._queue_add_position
+
+    @queue_add_position.setter
+    def queue_add_position(self, position: Union[int, Literal["front", "back"]]):
+        self._queue_add_position = position
+
+    def update_priority(self, position: Union[int, Literal["front", "back"]]):
+        self.queue_add_position = position
+
+    @property
+    def ask_on_tell(self) -> bool:
+        return self._ask_on_tell
+
+    @ask_on_tell.setter
+    def ask_on_tell(self, flag: bool):
+        self._ask_on_tell = flag
+
+    @property
+    def report_on_tell(self) -> bool:
+        return self._ask_on_tell
+
+    @report_on_tell.setter
+    def report_on_tell(self, flag: bool):
+        self._report_on_tell = flag
+
+    def enable_continuous_reporting(self):
+        """Enable agent to report each time it receives data."""
+        self.report_on_tell = True
+
+    def disable_continuous_reporting(self):
+        """Disable agent to report each time it receives data."""
+        self.report_on_tell = False
+
+    def enable_continuous_suggesting(self):
+        """Enable agent to suggest new points to the queue each time it receives data."""
+        self.ask_on_tell = True
+
+    def disable_continuous_suggesting(self):
+        """Disable agent to suggest new points to the queue each time it receives data."""
+        self.ask_on_tell = False
+
+    @property
+    def name(self) -> str:
+        """Short string name"""
+        return "agent"
 
     def _add_to_queue(self, batch_size: int = 1):
         """
@@ -216,7 +305,7 @@ class Agent(ABC):
                 *self.measurement_plan_args(point),
                 **self.measurement_plan_kwargs(point),
             )
-            r = self.re_manager.item_add(plan, pos=self._queue_add_position)
+            r = self.re_manager.item_add(plan, pos=self.queue_add_position)
             logging.info(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
         return doc
 
@@ -249,6 +338,18 @@ class Agent(ABC):
             self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
         self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
 
+    def add_suggestions(self, batch_size: int):
+        """Calls ask, adds suggestions to queue, and writes out event"""
+        logging.debug("Issuing ask and adding to the queue.")
+        doc = self._add_to_queue(batch_size)
+        self._check_queue_and_start()
+        self._write_event("ask", doc)
+
+    def generate_report(self, **kwargs):
+        logging.debug("Issuing report request and writing to Mongo.")
+        doc = self.report(**kwargs)
+        self._write_event("report", doc)
+
     @staticmethod
     def trigger_condition(uid) -> bool:
         return True
@@ -278,21 +379,30 @@ class Agent(ABC):
             self._write_event("tell", doc)
 
             # Ask
-            logging.debug("Issuing ask and adding to the queue.")
-            doc = self._add_to_queue(1)
-            self._check_queue_and_start()
-            self._write_event("ask", doc)
+            if self.report_on_tell:
+                self.generate_report(**self.default_report_kwargs)
+            if self.ask_on_tell:
+                self.add_suggestions(1)
+
+    def tell_agent_by_uid(self, uids: Iterable):
+        """Give an agent an iterable of uids to learn from.
+        This is an optional behavior for priming an agent without a complete restart."""
+        for uid in uids:
+            run = self.exp_catalog[uid]
+            independent_variable, dependent_variable = self.unpack_run(run)
+            doc = self.tell(independent_variable, dependent_variable)
+            doc["exp_uid"] = [uid]
+            self._write_event("tell", doc)
 
     def start(self, ask_at_start=False):
         logging.debug("Issuing start document and start listening to Kafka")
         self.builder = RunBuilder(metadata=self.metadata)
         self.agent_catalog.v1.insert("start", self.builder._cache.start_doc)
+        logging.info(f"Agent name={self.builder._cache.start_doc['agent_name']}")
         logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
         if ask_at_start:
-            self._add_to_queue(1)
-            self._check_queue_and_start()
-        self.kafka_dispatcher.subscribe(self._on_stop_router)
-        self.kafka_dispatcher.start()
+            self.add_suggestions(1)
+        self.kafka_consumer.start()
 
     def restart(self, uid):
         """
@@ -338,7 +448,7 @@ class Agent(ABC):
         logging.debug("Attempting agent stop.")
         self.builder.close(exit_status=exit_status, reason=reason)
         self.agent_catalog.v1.insert("stop", self.builder._cache.stop_doc)
-        self.kafka_dispatcher.stop()
+        self.kafka_consumer.stop()
         logging.info(
             f"Stopped agent with exit status {exit_status.upper()}"
             f"{(' for reason: ' + reason) if reason else '.'}"
@@ -482,7 +592,7 @@ class DrowsyAgent(Agent, ABC):
     def ask(self, batch_size: int) -> Tuple[dict, Sequence]:
         self.counter += 1
         logging.debug(f"Counter={self.counter}")
-        return dict(batch_size=[batch_size]), [0.0]
+        return dict(batch_size=[batch_size]), [0.0 for _ in range(batch_size)]
 
     def report(self):
         pass

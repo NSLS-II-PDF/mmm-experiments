@@ -1,16 +1,18 @@
 from pathlib import Path
 import os
 import logging
-from collections import namedtuple
+
+try:
+    from nslsii import _read_bluesky_kafka_config_file
+except ImportError:
+    from nslsii.kafka_utils import _read_bluesky_kafka_config_file
+
+logger = logging.getLogger(name="mmm.kafka")
 
 """
 A namedtuple for holding details of the publisher created by
 _subscribe_kafka_publisher.
 """
-_SubscribeKafkaPublisherDetails = namedtuple(
-    "SubscribeKafkaPublisherDetails",
-    {"beamline_topic", "bootstrap_servers", "producer_config", "re_subscribe_token"},
-)
 
 
 def _subscribe_kafka_publisher(
@@ -124,55 +126,6 @@ def _subscribe_kafka_publisher(
     )
 
     return subscribe_kafka_publisher_details
-
-
-def _read_bluesky_kafka_config_file(config_file_path):
-    """Read a YAML file of Kafka producer configuration details.
-
-    The file must have three top-level entries as shown:
-    ---
-        abort_run_on_kafka_exception: true
-        bootstrap_servers:
-            - kafka1:9092
-            - kafka2:9092
-        runengine_producer_config:
-            acks: 0
-            message.timeout.ms: 3000
-            compression.codec: snappy
-
-    Parameters
-    ----------
-    config_file_path: str
-        path to the YAML file of Kafka producer configuration details
-
-    Returns
-    -------
-    dict of configuration details
-    """
-    import yaml
-
-    # read the Kafka Producer configuration details
-    if Path(config_file_path).exists():
-        with open(config_file_path) as f:
-            bluesky_kafka_config = yaml.safe_load(f)
-    else:
-        raise FileNotFoundError(config_file_path)
-
-    required_sections = (
-        "abort_run_on_kafka_exception",
-        "bootstrap_servers",
-        "runengine_producer_config",
-    )
-    missing_required_sections = [
-        required_section for required_section in required_sections if required_section not in bluesky_kafka_config
-    ]
-
-    if missing_required_sections:
-        raise Exception(
-            f"Bluesky Kafka configuration file '{config_file_path}' is missing required section(s) `{missing_required_sections}`"
-        )
-
-    return bluesky_kafka_config
 
 
 """
