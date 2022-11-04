@@ -114,6 +114,7 @@ class BMMAgent(Agent, ABC):
             steps="10 2 0.3 0.05k",
             times="0.5 0.5 0.5 0.5",
             snapshots=False,
+            md={"relative_position": point},
         )
 
     def trigger_condition(self, uid) -> bool:
