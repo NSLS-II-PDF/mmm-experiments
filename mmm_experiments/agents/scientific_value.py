@@ -42,6 +42,13 @@ def next_closest_raster_scan_point(
         The new proposed points.
     """
 
+    # If there are no observed points, put a point at infinity just to make
+    # the calculations work the same way. Kinda lazy but this is really fast
+    # and works just fine.
+    if observed_points is None or len(observed_points) == 0:
+        observed_points = np.ones(shape=(1, possible_coordinates.shape[1]))
+        observed_points = observed_points * np.inf
+
     assert proposed_points.shape[1] == observed_points.shape[1]
     assert proposed_points.shape[1] == possible_coordinates.shape[1]
 
