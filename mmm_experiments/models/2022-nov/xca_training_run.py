@@ -64,7 +64,7 @@ def joint_vae_class_main(checkpoint=None):
     metrics = dynamic_training(
         pl_module,
         gpus=[1],
-        max_epochs=500,
+        max_epochs=1000,
         batch_size=24,
         num_workers=24,
         prefetch_factor=4,
