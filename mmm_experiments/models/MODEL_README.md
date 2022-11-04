@@ -29,8 +29,8 @@ Model Training List
 Low Q, High Fidelity Model
 --------------------------
 - On lil-bits. 
-- wandb: [sandy-leaf-15](https://wandb.ai/phillip-maffettone/proj-xca/runs/2xyuxmnk)
-- checkpoint path: /home/pmm/project-mmm/proj-xca/2xyuxmnk
+- wandb: [terrifying-poltergeist-18](https://wandb.ai/phillip-maffettone/proj-xca/runs/3b77bt9s)
+- checkpoint path: /home/pmm/project-mmm/proj-xca/3b77bt9s
 ```python
 # BEGIN XRD PARAMETERS #
 param_dict = {
@@ -54,9 +54,9 @@ shape_limit = 1e-3
 
 Low Q, Low Fidelity Model (higher noise and peak shape)
 -------------------------------------------------------
-TBA.
-- wandb: 
-- checkpoint path: 
+- On lil-bits. 
+- wandb: [charmed-jazz-19](https://wandb.ai/phillip-maffettone/proj-xca/runs/3rb3fskq)
+- checkpoint path: /home/pmm/project-mmm/proj-xca/3rb3fskq
 ```python
 # BEGIN XRD PARAMETERS #
 param_dict = {
@@ -72,7 +72,7 @@ kwargs = {
     "bkg_2": (-1e-4, 1e-4),
     "bkg_1": (-1e-4, 1e-4),
     "bkg_0": (0, 1e-3),
-    "march_range": (0.8, 1.0),
+    "march_range": (0.0, 1.0),
     "isotropic_expansion": (-0.05, 0.05),
 }
 shape_limit = 1e-2

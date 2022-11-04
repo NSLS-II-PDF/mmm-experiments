@@ -1,5 +1,6 @@
 import logging
-from typing import Optional, Sequence, Tuple
+from pathlib import Path
+from typing import Literal, Optional, Sequence, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -7,6 +8,7 @@ import numpy as np
 import torch
 from constrainedmf.nmf.models import NMF
 from constrainedmf.nmf.utils import iterative_nmf
+from scipy.interpolate import interp1d
 
 from mmm_experiments.viz.plotting import independent_waterfall, min_max_normalize
 
@@ -184,3 +186,127 @@ class CMFMixin:
         residual_ax.set_xlabel("Data index")
         residual_ax.set_ylabel("Independent Var")
         return fig, axes
+
+
+class XCAMixin:
+    from databroker.client import BlueskyRun
+
+    def __init__(
+        self,
+        *,
+        model_checkpoint: Union[str, Path],
+        model_qspace: np.ndarray,
+        device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+        **kwargs,
+    ):
+        """
+        Crystallography companion agent mixin that will predict the phase, and provide a latent representation.
+        This mixin has no mechanism for feedback via `ask`, it is strictly a passive analysis agent.
+        Each `tell` will be documented with the expectation of the model, and a `report` will trigger a sorted
+        and comprehensive report on history.
+
+        Parameters
+        ----------
+        model_checkpoint : Union[str, Path]
+            Path to the pre-trained model checkpoint
+        model_qspace : np.ndarray
+            Numpy array of the trained model qspace. Likely a linspace.
+        device : Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+            Device to deploy agent on. Available devices on tritium listed.
+        kwargs
+        """
+        from xca.ml.torch.cnn import EnsembleCNN
+        from xca.ml.torch.training import JointVAEClassifierModule
+        from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
+
+        super().__init__(**kwargs)
+        self.independent_cache = []
+        self.dependent_cache = []
+        self.q_space = model_qspace
+        self.checkpoint = torch.load(str(model_checkpoint))
+        self.device = torch.device(device)
+
+        # Load lightning module
+        checkpoint = torch.load(str("last.ckpt"), map_location=self.device)
+        self.cnn = EnsembleCNN(**checkpoint["hyper_parameters"]["classifier_hparams"])
+        self.encoder = CNNEncoder(**checkpoint["hyper_parameters"]["encoder_hparams"])
+        self.decoder = CNNDecoder(**checkpoint["hyper_parameters"]["decoder_hparams"])
+        self.vae = VAE(self.encoder, self.decoder)
+        self.pl_module = JointVAEClassifierModule.load_from_checkpoint(
+            model_checkpoint, classification_model=self.cnn, vae_model=self.vae
+        )
+        self.pl_module.eval()
+        self.recon_loss = torch.nn.MSELoss(reduction="none")
+
+        # Prediction caches
+        self.probability_cache = []
+        self.latent_cache = []
+        self.reconstruction_cache = []
+        self.loss_cache = []
+        self.shannon_cache = []
+
+    def unpack_run(self, run: BlueskyRun):
+        """
+        Overrides standard unpack run to extract extra metadata
+        and interpolates intensity onto the standard Q space.
+        """
+        x = np.array(run.primary.data["chi_Q"][0])
+        y = np.array(run.primary.data["chi_I"][0])
+        f = interp1d(x, y, fill_value=0.0, bounds_error=False)
+        spectra = f(self.q_space)
+        spectra = (spectra - np.min(spectra)) / (np.max(spectra) - np.min(spectra))
+        return run.start["Grid_X"]["Grid_X"]["value"], spectra
+
+    def tell(self, position, intensity):
+        rel_position = position - self.measurement_origin
+
+        with torch.no_grad():
+            x = torch.tensor(intensity.ravel(), dtype=torch.float, device=self.device)[None, None, :]
+            res = self.pl_module(x)
+            logits = res["y_pred"]
+            prob = torch.sigmoid(logits)
+            prediction_prob = prob.div_(prob.sum(dim=1, keepdims=True)).cpu().numpy().ravel()
+            latent = res["mu"].cpu().numpy().ravel()
+            reconstruction = res["x_recon"][0].cpu().numpy().ravel()
+            loss = float(self.recon_loss(x, res["x_recon"][0]).sum(dim=(-1, -2)).cpu().numpy())
+            shannon = np.sum(-1 * prediction_prob * np.log(prediction_prob))
+
+        doc = dict(
+            position=[position],
+            rel_position=[rel_position],
+            intensity=[intensity],
+            prediction_prob=[prediction_prob],
+            latent_rep=[latent],
+            reconstruction=[reconstruction],
+            shannon=[shannon],
+            loss=[loss],
+        )
+
+        # Update caches for report with raveled arrays to be stacked
+        self.independent_cache.append(rel_position)
+        self.dependent_cache.append(intensity)
+        self.probability_cache.append(prediction_prob)
+        self.latent_cache.append(latent)
+        self.reconstruction_cache.append(reconstruction)
+        self.loss_cache.append(loss)
+        self.shannon_cache.append(shannon)
+
+        return doc
+
+    def report(self):
+        """Return document of all relevant caches for plotting. Expected shapes/types in comments."""
+        return dict(
+            absolute_positions=[[pos + self.measurement_origin for pos in self.independent_cache]],  # List[float]
+            relative_positions=[self.independent_cache],  # List[float]
+            resampled_normalized_patterns=[
+                np.stack(self.dependent_cache)
+            ],  # [# of measurements, # of new q_points in pattern resampled for model expectation]
+            prediction_probabilities=[np.stack(self.probability_cache)],  # [# of measurements, # of phases]
+            latent_space_positions=[np.stack(self.latent_cache)],  # [# of measurements, latent dim]
+            reconstructed_patterns=[np.stack(self.reconstruction_cache)],  # [# of measurements, # of new q_points]
+            reconstruction_losses=[self.loss_cache],  # List[float]
+            shannon_entropy=[self.shannon_cache],  # List[float]
+        )
+
+    def ask(self):
+        raise NotImplementedError("Basic XCA Mixin is a passive agent.")
