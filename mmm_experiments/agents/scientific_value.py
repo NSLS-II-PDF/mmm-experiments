@@ -136,6 +136,8 @@ class ScientificValueAgentMixin:
 
     def __init__(
         self,
+        *,
+        device: Union[torch.device, str],
         length_scale: Optional[float] = None,
         y_distance_function: Optional[callable] = None,
         optimize_acqf_kwargs: dict = {
@@ -145,6 +147,7 @@ class ScientificValueAgentMixin:
         **kwargs
     ):
         super().__init__(**kwargs)
+        self.device = device
         self._length_scale = length_scale
         self._y_distance_function = y_distance_function
         self._optimize_acqf_kwargs = optimize_acqf_kwargs
