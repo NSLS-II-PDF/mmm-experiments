@@ -243,8 +243,8 @@ class ScientificValueAgentMixin:
             next_points = [float(x.to("cpu")) for x in next_points]
 
         doc = dict(
-            batch_size=optimize_acqf_kwargs["q"],
-            next_points=next_points,
+            batch_size=[optimize_acqf_kwargs["q"]],
+            next_points=[next_points],
             acq_value=[float(x.to("cpu")) for x in acq_value]
             if optimize_acqf_kwargs["q"] > 1
             else [float(acq_value.to("cpu"))],
