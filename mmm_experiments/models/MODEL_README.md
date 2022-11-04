@@ -54,9 +54,9 @@ shape_limit = 1e-3
 
 Low Q, Low Fidelity Model (higher noise and peak shape)
 -------------------------------------------------------
-TBA.
-- wandb: 
-- checkpoint path: 
+- On lil-bits. 
+- wandb: [charmed-jazz-19](https://wandb.ai/phillip-maffettone/proj-xca/runs/3rb3fskq)
+- checkpoint path: /home/pmm/project-mmm/proj-xca/3rb3fskq
 ```python
 # BEGIN XRD PARAMETERS #
 param_dict = {
