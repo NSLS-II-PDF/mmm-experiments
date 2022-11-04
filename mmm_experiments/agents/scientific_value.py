@@ -130,7 +130,7 @@ class ScientificValueAgentMixin:
     that the user does not need to set any parameters explicitly, though one
     can manually set a length scale if desired.
 
-    Assumes that ``device``, ``relative_bounds`` and ``measurement_origin`` are
+    Assumes that ``relative_bounds`` and ``measurement_origin`` are
     defined as attributes.
     """
 
