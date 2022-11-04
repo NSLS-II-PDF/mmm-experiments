@@ -69,7 +69,7 @@ class Adjudicator(BlueskyConsumer, ABC):
         if name != "agent_suggestions":
             return True
         with self._lock:
-            # logger.info(f'{doc["agent_name"]=}, {doc["publish_uid"]=}')
+            logger.info(f"agent_name = {doc['agent_name']}, publish_uid={doc['publish_uid']}")
             self._current_suggestions[doc["agent_name"]] = doc
 
     @property
