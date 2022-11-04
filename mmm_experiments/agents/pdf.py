@@ -1,6 +1,7 @@
 from abc import ABC
 from collections import namedtuple
-from typing import Optional, Tuple
+from pathlib import Path
+from typing import Literal, Optional, Tuple, Union
 
 import numpy as np
 from databroker.client import BlueskyRun
@@ -13,7 +14,7 @@ from .base import (
     RandomAgentMixin,
     SequentialAgentMixin,
 )
-from .ml_mixins import CMFMixin
+from .ml_mixins import CMFMixin, XCAMixin
 
 Representation = namedtuple("Representation", "probabilities shannon_entropy reconstruction_loss")
 
@@ -41,7 +42,7 @@ class PDFAgent(Agent, ABC):
         *,
         sample_origin: Tuple[float, float],
         relative_bounds: Tuple[float, float],
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
     ):
         """
         Base class for all PDF agents
@@ -129,3 +130,32 @@ class CMFAgent(CMFMixin, PDFAgent):
 
     def __init__(self, *, num_components: int, ask_mode: str, **kwargs):
         super().__init__(num_components=num_components, ask_mode=ask_mode, **kwargs)
+
+
+class XCAPassiveAgent(XCAMixin, PDFAgent):
+    """
+    Crystallography companion agent that will predict the phase, and provide a latent representation.
+    This mixin has no mechanism for feedback via `ask`, it is strictly a passive analysis agent.
+    Each `tell` will be documented with the expectation of the model, and a `report` will trigger a sorted
+    and comprehensive report on history.
+
+    Parameters
+    ----------
+    model_checkpoint : Union[str, Path]
+        Path to the pre-trained model checkpoint
+    model_qspace : np.ndarray
+        Numpy array of the trained model qspace. Likely a linspace.
+    device : Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+        Device to deploy agent on. Available devices on tritium listed.
+    kwargs
+    """
+
+    def __init__(
+        self,
+        *,
+        model_checkpoint: Union[str, Path],
+        model_qspace: np.ndarray,
+        device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+        **kwargs,
+    ):
+        super().__init__(model_checkpoint=model_checkpoint, model_qspace=model_qspace, device=device, **kwargs)

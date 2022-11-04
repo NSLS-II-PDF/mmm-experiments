@@ -199,6 +199,22 @@ class XCAMixin:
         device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         **kwargs,
     ):
+        """
+        Crystallography companion agent mixin that will predict the phase, and provide a latent representation.
+        This mixin has no mechanism for feedback via `ask`, it is strictly a passive analysis agent.
+        Each `tell` will be documented with the expectation of the model, and a `report` will trigger a sorted
+        and comprehensive report on history.
+
+        Parameters
+        ----------
+        model_checkpoint : Union[str, Path]
+            Path to the pre-trained model checkpoint
+        model_qspace : np.ndarray
+            Numpy array of the trained model qspace. Likely a linspace.
+        device : Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+            Device to deploy agent on. Available devices on tritium listed.
+        kwargs
+        """
         from xca.ml.torch.cnn import EnsembleCNN
         from xca.ml.torch.training import JointVAEClassifierModule
         from xca.ml.torch.vae import VAE, CNNDecoder, CNNEncoder
