@@ -1,4 +1,5 @@
-from ophyd import Device, Component as Cpt, EpicsSignal, EpicsSignalRO
+from ophyd import Component as Cpt
+from ophyd import Device, EpicsSignal, EpicsSignalRO
 from ophyd.status import SubscriptionStatus
 
 
@@ -8,6 +9,7 @@ class LatchSignal(EpicsSignal):
         # going low, just be done
         if value == 0:
             return base_st
+
         # going high, set up a latch
         def make_cb():
             went_high = False
@@ -40,7 +42,7 @@ class SwitchBoardClient(Device):
 
 class SwitchBoardBackend(Device):
     # do not use latching behavior on backend
-    publish = Cpt(EpicsSignal, "publish_to_queue", put_complete=True)
+    publish_to_queue = Cpt(EpicsSignal, "publish_to_queue", put_complete=True)
     # backend can not set its own mode
     adjudicate_mode = Cpt(EpicsSignalRO, "adjudicate_mode")
     adjudicate_status = Cpt(EpicsSignal, "adjudicate_status", put_complete=True)
