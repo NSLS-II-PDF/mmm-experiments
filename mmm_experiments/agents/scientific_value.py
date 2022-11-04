@@ -197,9 +197,9 @@ class ScientificValueAgentMixin:
         return dict(
             position=[position],
             rel_position=[relative_position],
-            observation=observation,
+            observation=[observation],
             cache_len=[len(self._relative_positions_cache)],
-            value=V.squeeze()[-1]
+            value=[V.squeeze()[-1]]
         )
 
     def ask(self, optimize_acqf_kwargs=None):
