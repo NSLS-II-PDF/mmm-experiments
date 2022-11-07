@@ -7,7 +7,7 @@ class Suggestion(BaseModel):
     ask_uid: str  # UID from the agent ask message
     plan_name: str
     plan_args: list = []
-    plan_kwargs: dict = dict
+    plan_kwargs: dict = {}
 
 
 class AdjudicatorMsg(BaseModel):
