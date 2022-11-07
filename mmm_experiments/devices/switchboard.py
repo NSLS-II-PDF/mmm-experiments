@@ -32,19 +32,19 @@ class LatchSignal(EpicsSignal):
 
 class SwitchBoardClient(Device):
     # this has tricking "latching" behavior to wait for other party to work
-    publish = Cpt(LatchSignal, "publish_to_queue", put_complete=True, timeout=15)
-    adjudicate_mode = Cpt(EpicsSignal, "adjudicate_mode", put_complete=True)
+    publish = Cpt(LatchSignal, "Pub-CMD", put_complete=True, timeout=15)
+    adjudicate_mode = Cpt(EpicsSignal, "Adj-Mode", put_complete=True)
     # client can not set status
-    adjudicate_status = Cpt(EpicsSignalRO, "adjudicate_status")
+    adjudicate_status = Cpt(EpicsSignalRO, "Adj-STS")
 
 
 class SwitchBoardBackend(Device):
     # do not use latching behavior on backend
-    publish = Cpt(EpicsSignal, "publish_to_queue", put_complete=True)
+    publish = Cpt(EpicsSignal, "Pub-CMD", put_complete=True)
     # backend can not set its own mode
-    adjudicate_mode = Cpt(EpicsSignalRO, "adjudicate_mode")
-    adjudicate_status = Cpt(EpicsSignal, "adjudicate_status", put_complete=True)
+    adjudicate_mode = Cpt(EpicsSignalRO, "Adj-Mode")
+    adjudicate_status = Cpt(EpicsSignal, "Adj-STS", put_complete=True)
 
 
 if __name__ == "__main__":
-    sb = SwitchBoardClient("pdf:switchboard:", name="sb")
+    sb = SwitchBoardClient("XF:28ID1-DA{SB:1}", name="sb")
