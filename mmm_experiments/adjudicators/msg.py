@@ -12,7 +12,7 @@ class Suggestion(BaseModel):
 
 class AdjudicatorMsg(BaseModel):
     agent_name: str
-    uid: str
+    suggestions_uid: str
     suggestions: dict[str, list[Suggestion]]  # TLA: list
 
 

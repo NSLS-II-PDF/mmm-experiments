@@ -70,7 +70,7 @@ name, doc = [
         # name of agent, used by adjudicator
         "agent": "aardvark",
         # unique ID of this ask / batch of suggestions
-        "uid": "086ff562-c997-48c7-9fbb-9cbe3c362ff0",
+        "suggestions_uid": "086ff562-c997-48c7-9fbb-9cbe3c362ff0",
         # per-beamline suggestions
         "suggestions": {
             "pdf": [
@@ -112,11 +112,11 @@ name, doc = [
 The outer and inner layers may contain additional information, all keys in
 `"suggestions"` are assumed to be beamline TLAs.
 
-The outer `publish_id` is a unique id for the ask from the agent.  The
+The outer `suggestions_uid` is a unique id for the ask from the agent.  The
 per-suggestion aids are so that the adjudicator can track if it has added that
 particular suggestion to the queue before.
 
-All of `"agent_name"`, `"publish_uid"`, and `"suggestion_uid"` should be added
+All of `"agent_name"`, `"ask_uid"`, and `"suggestions_uid"` should be added
 to the metadata when the plan is added to the queue by the adjudicator.
 
 
