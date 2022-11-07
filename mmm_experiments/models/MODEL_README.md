@@ -57,6 +57,7 @@ Low Q, Low Fidelity Model (higher noise and peak shape)
 - On lil-bits. 
 - wandb: [charmed-jazz-19](https://wandb.ai/phillip-maffettone/proj-xca/runs/3rb3fskq)
 - checkpoint path: /home/pmm/project-mmm/proj-xca/3rb3fskq
+- Expected phase ordering ['Pt1_Fm-3m', 'Zr1Pt3_P6_3mmc', 'Zr1_Ibam', 'Zr1Pt3_Pm-3m', 'Zr1Pt8_I4mmm', 'Zr1_Im-3m', 'Zr1_Fm-3m', 'Zr1_P6_3mmc', 'Zr1Pt1_Cmcm', 'Zr2Pt1_Fd-3m', 'Zr5Pt3_Cmcm', 'Zr7Pt10_Cmce', 'Zr9Pt11_I4m']
 ```python
 # BEGIN XRD PARAMETERS #
 param_dict = {
