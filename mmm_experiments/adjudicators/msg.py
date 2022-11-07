@@ -23,7 +23,7 @@ if __name__ == "__main__":
     suggestion = Suggestion(ask_uid="123", plan_name="test_plan", plan_args=[1, 3], plan_kwargs={"md": {}})
     msg = AdjudicatorMsg(
         agent_name="aardvark",
-        uid="456",
+        suggestions_uid="456",
         suggestions={
             "pdf": [
                 suggestion,

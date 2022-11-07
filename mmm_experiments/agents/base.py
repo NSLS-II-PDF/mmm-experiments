@@ -7,12 +7,15 @@ from typing import Iterable, Literal, Optional, Sequence, Tuple, Union
 import databroker.client
 import nslsii
 import numpy as np
+from bluesky_kafka import Publisher
 from bluesky_live.run_builder import RunBuilder
 from bluesky_queueserver_api import BPlan
 from bluesky_queueserver_api.http import REManagerAPI
 from tiled.client import from_profile
 from xkcdpass import xkcd_password as xp
 
+from mmm_experiments.adjudicators.msg import DEFAULT_NAME as ADJUDICATOR_STREAM_NAME
+from mmm_experiments.adjudicators.msg import AdjudicatorMsg, Suggestion
 from mmm_experiments.data.kafka_consumer import AgentConsumer
 
 PASSWORD_LIST = xp.generate_wordlist(wordfile=xp.locate_wordfile(), min_length=3, max_length=8)
@@ -71,6 +74,7 @@ class Agent(ABC):
             beamline_tla=beamline_tla,
             bluesky_callbacks=(self._on_stop_router,),
         )
+        self.kafka_producer = Publisher(topic=f"{beamline_tla}.mmm.bluesky.adjudicators")
         logging.debug("Kafka setup sucessfully.")
         self.exp_catalog = (
             from_profile("pdf_bluesky_sandbox") if beamline_tla == "pdf" else from_profile(beamline_tla)
@@ -79,7 +83,7 @@ class Agent(ABC):
         self.agent_catalog = from_profile(f"{beamline_tla}_bluesky_sandbox")
         logging.info(f"Writing data to catalog: {self.agent_catalog}")
         self.metadata = metadata or {}
-        self.metadata["beamline_tla"] = beamline_tla
+        self.metadata["beamline_tla"] = self.beamline_tla = beamline_tla
         self.metadata["kafka_group_id"] = self.kafka_group_id
         self.metadata[
             "agent_name"
@@ -290,26 +294,25 @@ class Agent(ABC):
         """Short string name"""
         return "agent"
 
-    def _add_to_queue(self, batch_size: int = 1):
+    def _add_to_queue(self, next_points, uid):
         """
         Soft wrapper for the `ask` method that puts the agent's
         proposed next points on the queue.
 
         Parameters
         ----------
-        batch_size : int
-            Number of new points to measure
+        next_points : Iterable
+            New points to measure
+        uid : str
 
         Returns
         -------
 
         """
-        doc, next_points = self.ask(batch_size)
-        doc.setdefault("uid", str(uuid.uuid4()))
         for point in next_points:
             kwargs = self.measurement_plan_kwargs(point)
             kwargs["md"].update(self.default_plan_md)
-            kwargs["md"]["agent_ask_uid"] = doc["uid"]
+            kwargs["md"]["agent_ask_uid"] = uid
             plan = BPlan(
                 self.measurement_plan_name,
                 *self.measurement_plan_args(point),
@@ -317,7 +320,7 @@ class Agent(ABC):
             )
             r = self.re_manager.item_add(plan, pos=self.queue_add_position)
             logging.debug(f"Sent http-server request for point {point}\n." f"Received reponse: {r}")
-        return doc
+        return
 
     def _check_queue_and_start(self):
         """
@@ -339,21 +342,43 @@ class Agent(ABC):
 
     def _write_event(self, stream, doc):
         """Add event to builder as event page, and publish to catalog"""
+        uid = str(uuid.uuid4())
         if not doc:
             return
         if stream in self.builder._streams:
-            self.builder.add_data(stream, data=doc)
+            self.builder.add_data(stream, data=doc, uid=uid)
         else:
-            self.builder.add_stream(stream, data=doc)
+            self.builder.add_stream(stream)
+            self.builder.add_data(stream, data=doc, uid=uid)
             self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
         self.agent_catalog.v1.insert(*self.builder._cache._ordered[-1])
+        return uid
 
-    def add_suggestions(self, batch_size: int):
+    def add_suggestions_to_queue(self, batch_size: int):
         """Calls ask, adds suggestions to queue, and writes out event"""
         logging.debug("Issuing ask and adding to the queue.")
-        doc = self._add_to_queue(batch_size)
+        doc, next_points = self.ask(batch_size)
+        uid = self._write_event("ask", doc)
+        self._add_to_queue(next_points, uid)
         self._check_queue_and_start()
-        self._write_event("ask", doc)
+
+    def generate_suggestions_for_adjudicator(self, batch_size: int):
+        logging.debug("Issuing ask and sending to adjudicator.")
+        doc, next_points = self.ask(batch_size)
+        uid = self._write_event("ask", doc)
+        suggestions = [
+            Suggestion(
+                ask_uid=uid,
+                plan_name=self.measurement_plan_name,
+                args=self.measurement_plan_args(point),
+                kwargs=self.measurement_plan_kwargs(point),
+            )
+            for point in next_points
+        ]
+        msg = AdjudicatorMsg(
+            agent_name=self.agent_name, uid=str(uuid.uuid4()), suggestions={self.beamline_tla: suggestions}
+        )
+        self.kafka_producer(ADJUDICATOR_STREAM_NAME, msg.dict())
 
     def generate_report(self, **kwargs):
         logging.debug("Issuing report request and writing to Mongo.")
