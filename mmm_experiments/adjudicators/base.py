@@ -129,7 +129,7 @@ class AdjudicatorBase(BlueskyConsumer, ABC):
         """Adds all current suggestions by an agent to the queue"""
 
 
-class AgentByModeAdjudicator(AdjudicatorBase):
+class AgentByModeAdjudicator(AdjudicatorBase, ABC):
     def make_judgements(self, value):
         agent_name = self._switchboard.adjudicate_mode.get()
         if agent_name not in self.agent_names:
@@ -146,7 +146,11 @@ if __name__ == "__main__":
     kafka_config = _read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
     tla = "pdf"
 
-    adjudicator = AgentByModeAdjudicator(
+    class SimpleAdjudicator(AgentByModeAdjudicator):
+        server_host = "https://qserver.nsls2.bnl.gov/pdf"
+        api_key = "yyyyy"
+
+    adjudicator = SimpleAdjudicator(
         tla=tla,
         topics=[f"{tla}.mmm.bluesky.adjudicators"],
         bootstrap_servers=",".join(kafka_config["bootstrap_servers"]),
