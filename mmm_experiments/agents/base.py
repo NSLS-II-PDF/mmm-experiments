@@ -376,7 +376,7 @@ class Agent(ABC):
             for point in next_points
         ]
         msg = AdjudicatorMsg(
-            agent_name=self.agent_name, uid=str(uuid.uuid4()), suggestions={self.beamline_tla: suggestions}
+            agent_name=self.agent_name, suggestions_uid=str(uuid.uuid4()), suggestions={self.beamline_tla: suggestions}
         )
         self.kafka_producer(ADJUDICATOR_STREAM_NAME, msg.dict())
 
