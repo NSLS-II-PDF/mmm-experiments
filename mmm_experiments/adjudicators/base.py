@@ -34,8 +34,8 @@ class DequeSet:
         self._set.add(d)
         self._dequeue.append(d)
         while len(self._dequeue) >= self._maxlen:
-            discared = self._dequeue.popleft()
-            self._set.remove(discared)
+            self._dequeue.popleft()
+            # self._set.remove(discared)
 
 
 class AdjudicatorBase(BlueskyConsumer, ABC):
@@ -117,13 +117,20 @@ class AdjudicatorBase(BlueskyConsumer, ABC):
         ...
 
     def _add_suggestion_to_queue(self, agent_name, suggestion):
+        if suggestion.ask_uid in self._uid_deque_set:
+            logger.warning(
+                f"Ask uid {suggestion.ask_uid} has already been seen. Not adding anything to the queue."
+            )
+            return
+        else:
+            self._uid_deque_set.append(suggestion.ask_uid)
         kwargs = suggestion.plan_kwargs
         kwargs.setdefault("md", {})
         kwargs["md"]["agent_ask_uid"] = suggestion.ask_uid
         kwargs["md"]["agent_name"] = agent_name
         plan = BPlan(suggestion.plan_name, *suggestion.plan_args, **kwargs)
         r = self.re_manager.item_add(plan, pos="back")
-        logging.debug(f"Sent http-server request by adjudicator\n." f"Received reponse: {r}")
+        logger.debug(f"Sent http-server request by adjudicator\n." f"Received reponse: {r}")
 
 
 class AgentByModeAdjudicator(AdjudicatorBase, ABC):
