@@ -202,4 +202,5 @@ Running List of Gripes/Complaints/Bugs/Suggested Improvements
 - Passive queue monitor agents are necessary to alert for failures over night, potentially restart queue, etc. (Separate from decision making agents)
 - The PDF agent during a long experiment failed because it stopped receiving stop documents.
     - pdfstream -> kafka+mongo bridge saturated a local hard disk, and stopped issuing messages to kafka.
+- XCA agents should have classes rigidly/reproducibly ordered and retained.
 

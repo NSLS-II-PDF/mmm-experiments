@@ -51,18 +51,19 @@ def transform_factory(striped_keys):
         return {k: v for k, v in inp.items() if k not in striped_keys}
 
     def strip_keys(name, doc):
-        if name in {"start", "stop"}:
+        if name in {"start", "stop", "datum", "datum_page", "resource"}:
             pass
         elif name == "descriptor":
             doc = deepcopy(doc)
             doc["data_keys"] = strip_dict(doc["data_keys"])
             for prefix in ["chi", "iq", "sq", "fq", "gr"]:
                 for k, v in doc["data_keys"].items():
-                    if not k.startswith(prefix):
+                    if f'{prefix}_' not in k:
                         continue
                     if len(v["shape"]) == 0:
                         continue
-                    v["dims"] = (f"{prefix}_index",)
+                    offset = k.find(prefix) + len(prefix)
+                    v["dims"] = (f"{k[:offset]}_index",)
             for k, v in doc["object_keys"].items():
                 doc["object_keys"][k] = [_ for _ in v if _ not in striped_keys]
 
@@ -90,7 +91,7 @@ def start(zmq_address, zmq_prefix, beamline, document_source):
         else None
     )
 
-    transformer = transform_factory({"dk_sub_image", "mask"})
+    transformer = transform_factory({"dk_sub_image", "mask", "pe1c_image", "pe1c_mask"})
     # subscribes inside, this pushes the documets to kafka
     configure_kafka_publisher(rd, beamline, document_source=document_source, transformer=transformer)
     # get the document-aware sandbox
