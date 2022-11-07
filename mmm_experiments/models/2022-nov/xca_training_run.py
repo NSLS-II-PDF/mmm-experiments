@@ -25,6 +25,7 @@ kwargs = {
 shape_limit = 1e-2
 
 cif_paths = list((Path(__file__).parent / "phases").glob("*.cif"))
+print([path.stem for path in cif_paths])
 
 
 def joint_vae_class_main(checkpoint=None):
