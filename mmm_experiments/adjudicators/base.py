@@ -125,9 +125,6 @@ class AdjudicatorBase(BlueskyConsumer, ABC):
         r = self.re_manager.item_add(plan, pos="back")
         logging.debug(f"Sent http-server request by adjudicator\n." f"Received reponse: {r}")
 
-    def add_current_suggestions_to_queue(self, agent_name):
-        """Adds all current suggestions by an agent to the queue"""
-
 
 class AgentByModeAdjudicator(AdjudicatorBase, ABC):
     def make_judgements(self, value):
