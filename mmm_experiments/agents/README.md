@@ -23,6 +23,10 @@ https://github.com/NSLS-II-PDF/mmm-experiments/blob/4a417ad8fb9102086db1f019e90e
 https://github.com/NSLS-II-PDF/mmm-experiments/blob/a1b3c7efc6d57a463f003e22524a2b25340d7b1f/mmm_experiments/agents/base.py#L362-L393
 https://github.com/NSLS-II-PDF/mmm-experiments/blob/a1b3c7efc6d57a463f003e22524a2b25340d7b1f/mmm_experiments/agents/base.py#L429-L437
 
+For CMF specifically, where ask modes are `AVAILABLE_ASK_MODES = {"autoconstrained", "unconstrained"}`
+https://github.com/NSLS-II-PDF/mmm-experiments/blob/13deca26b3073d12427f47849134971e333747ef/mmm_experiments/agents/ml_mixins.py#L70-L76
+
+
 To grab at specific documents from Tiled, the interface is a little clunky (for now...). Example code to grab the most
 recent `report` from an agent_name. I will work on getting this functionality into the repo soon.:
 ```python
