@@ -428,7 +428,11 @@ class Agent(ABC):
                 f"and asking for a new suggestion: {uid}"
             )
             run = self.exp_catalog[uid]
-            independent_variable, dependent_variable = self.unpack_run(run)
+            try:
+                independent_variable, dependent_variable = self.unpack_run(run)
+            except KeyError as e:
+                logging.warning(f"Ignoring key error in unpack for data{uid}:\n {e}")
+                return
 
             # Tell
             logging.debug("Telling agent about some new data.")
