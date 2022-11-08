@@ -319,7 +319,18 @@ class XCAMixin:
 
 
 class XCAValueMixin(XCAMixin):
-    """XCA Mixin that incorperates scientific value function into ask and report"""
+    """
+    XCA Mixin that incorperates scientific value function into ask and report
+    Parameters
+    ----------
+    xca_device : Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+        Device to deploy forward model on. Available devices on tritium listed.
+    botorch_device : Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+        Device to deploy bayes opt model on. Available devices on tritium listed.
+    beta : float
+        beta value for upper confidence bound acquisition function
+    kwargs
+    """
 
     def __init__(
         self,

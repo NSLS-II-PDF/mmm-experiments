@@ -14,7 +14,7 @@ from .base import (
     RandomAgentMixin,
     SequentialAgentMixin,
 )
-from .ml_mixins import CMFMixin, XCAMixin
+from .ml_mixins import CMFMixin, XCAMixin, XCAValueMixin
 
 Representation = namedtuple("Representation", "probabilities shannon_entropy reconstruction_loss")
 
@@ -159,3 +159,44 @@ class XCAPassiveAgent(XCAMixin, PDFAgent):
         **kwargs,
     ):
         super().__init__(model_checkpoint=model_checkpoint, model_qspace=model_qspace, device=device, **kwargs)
+
+
+class XCAActiveAgent(XCAValueMixin, PDFAgent):
+    """
+    Crystallography companion agent that will predict the phase, and provide a latent representation.
+    This mixin uses the scientific value function to optmize over in the `ask`. Uniquely it determines distance
+    between two dependent variables by their latent representation instead of the spectral representation.
+    Each `tell` will be documented with the expectation of the model, and a `report` will trigger a sorted
+    and comprehensive report on history.
+
+    Parameters
+    ----------
+    model_checkpoint : Union[str, Path]
+        Path to the pre-trained model checkpoint
+    model_qspace : np.ndarray
+        Numpy array of the trained model qspace. Likely a linspace.
+    xca_device : Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+        Device to deploy forward model on. Available devices on tritium listed.
+    botorch_device : Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+        Device to deploy bayes opt model on. Available devices on tritium listed.
+    beta : float
+        beta value for upper confidence bound acquisition function
+    kwargs
+    """
+
+    def __init__(
+        self,
+        *,
+        model_checkpoint: Union[str, Path],
+        model_qspace: np.ndarray,
+        xca_device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+        botorch_device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+        **kwargs,
+    ):
+        super().__init__(
+            model_checkpoint=model_checkpoint,
+            model_qspace=model_qspace,
+            xca_device=xca_device,
+            botorch_device=botorch_device,
+            **kwargs,
+        )
