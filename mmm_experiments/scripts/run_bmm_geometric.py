@@ -1,5 +1,6 @@
 import logging
 import signal
+import time
 
 from mmm_experiments.agents.bmm import GeometricAgent
 
@@ -8,12 +9,9 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     try:
         agent = GeometricAgent(
-            Cu_origin=(155.390, 83.96),
-            Ti_origin=(155.381, 82.169),
-            Cu_det_position=205,
-            Ti_det_position=20,
-            relative_bounds=(-30, 23),
-            metadata={"times_Ive_laughed": 1, "times_Ive_cried": 52},
+            origin=(183.818, 122.319),
+            relative_bounds=(-28, 37),
+            metadata=dict(init_time=time.time(), notes="Agent run on half wafer as initial test"),
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.independent_cache.append(0.0)

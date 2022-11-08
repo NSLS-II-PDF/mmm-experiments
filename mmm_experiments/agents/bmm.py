@@ -64,7 +64,7 @@ class BMMSingleEdgeAgent(Agent, ABC):
         BMM agents are relative to Cu origin, but separate origins are needed for other element edges."""
         return (
             self.sample_position_motors[0],
-            self.origin[0] + point,
+            self.origin[0] - point,
             self.sample_position_motors[1],
             self.origin[1],
         )
