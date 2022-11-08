@@ -6,7 +6,7 @@ from mmm_experiments.agents.bmm import GeometricAgent
 
 if __name__ == "__main__":
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     try:
         agent = GeometricAgent(
             origin=(183.818, 122.319),

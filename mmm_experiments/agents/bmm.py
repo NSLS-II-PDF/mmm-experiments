@@ -1,4 +1,5 @@
 import ast
+import logging
 from abc import ABC
 from typing import Optional, Sequence, Tuple
 
@@ -90,10 +91,14 @@ class BMMSingleEdgeAgent(Agent, ABC):
     def unpack_run(run: databroker.client.BlueskyRun):
         """Gets Chi(k) and absolute position"""
         run_preprocessor = Pandrosus()
-        run_preprocessor.fetch(run, mode="fluorescence")
+        logging.debug("Initialized Pandrosus")
+        run_preprocessor.fetch(run, mode="transmission")
+        logging.debug("Fetch Run")
         # x_data = run_preprocessor.group.k
         y_data = run_preprocessor.group.chi
+        logging.debug("Got y data")
         md = ast.literal_eval(run.start["XDI"]["_comment"][0])
+        logging.debug("loaded md from run start XDI _comment")
         return md["x_position"], y_data
 
     def trigger_condition(self, uid) -> bool:

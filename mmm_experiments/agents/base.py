@@ -431,7 +431,7 @@ class Agent(ABC):
             try:
                 independent_variable, dependent_variable = self.unpack_run(run)
             except KeyError as e:
-                logging.warning(f"Ignoring key error in unpack for data{uid}:\n {e}")
+                logging.warning(f"Ignoring key error in unpack for data {uid}:\n {e}")
                 return
 
             # Tell
