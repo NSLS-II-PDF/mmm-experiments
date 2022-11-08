@@ -23,6 +23,26 @@ https://github.com/NSLS-II-PDF/mmm-experiments/blob/4a417ad8fb9102086db1f019e90e
 https://github.com/NSLS-II-PDF/mmm-experiments/blob/a1b3c7efc6d57a463f003e22524a2b25340d7b1f/mmm_experiments/agents/base.py#L362-L393
 https://github.com/NSLS-II-PDF/mmm-experiments/blob/a1b3c7efc6d57a463f003e22524a2b25340d7b1f/mmm_experiments/agents/base.py#L429-L437
 
+To grab at specific documents from Tiled, the interface is a little clunky (for now...). Example code to grab the most
+recent `report` from an agent_name. I will work on getting this functionality into the repo soon.:
+```python
+from tiled.client import from_profile
+from mmm_experiments.data.agent_loaders import replay
+client = from_profile("pdf_bluesky_sandbox")
+run = client.search({"agent_name": "agent-musty-aversion"}).values_indexer[0]
+descriptor_cache = {}
+def _callback(name, doc):
+    if name == "descriptor":
+            descriptor_cache[doc["uid"]] = doc["name"]
+    if name == "event":
+        stream = descriptor_cache[doc["descriptor"]]
+        if stream == "report":
+           data = doc["data"]
+    return data
+for name, doc in run.documents():
+    data = _callback(name, doc)
+```
+
 
 ## Mixins
 Most agents are designed to incorporate Mixin classes to provide similar functionality
