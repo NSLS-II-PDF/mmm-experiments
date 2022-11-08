@@ -82,7 +82,16 @@ class PDFAgent(Agent, ABC):
         return {"sample_number": 16, "md": md}
 
     def get_wafer_background(self, mode="pdf"):
-        background_runs = self.exp_catalog.search({"sample_name": f"{mode}_MTwafer"}).values_indexer[:]
+        ignore_uids = [
+            "f7c84b98-4a42-4a7c-a011-2087b9ef2196",
+            "7498e441-51b3-443e-9005-19c923ea1f0b",
+            "b0f0817a-cece-4bc4-8ba3-235fdd48776d",
+        ]
+        background_runs = [
+            run
+            for run in self.exp_catalog.search({"sample_name": f"{mode}_MTwafer"}).values_indexer[:]
+            if run.start["uid"] not in ignore_uids
+        ]
         return xarray.concat((r.primary.read(["chi_Q", "chi_I"]) for r in background_runs), dim="time").mean(
             dim="time"
         )
