@@ -362,6 +362,9 @@ class Agent(ABC):
         uid = str(uuid.uuid4())
         if not doc:
             return
+        doc["uid"] = [
+            uid,
+        ]
         if stream in self.builder._streams:
             self.builder.add_data(stream, data=doc, uid=uid)
         else:
