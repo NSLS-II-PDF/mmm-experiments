@@ -108,8 +108,8 @@ class Agent(ABC):
         self.default_plan_md = dict(
             agent_name=self.agent_name,
             agent_class=str(type(self)),
-            tiled_data_profile=self.exp_catalog,
-            tiled_agent_profile=self.agent_catalog,
+            tiled_data_profile=str(self.exp_catalog),
+            tiled_agent_profile=str(self.agent_catalog),
         )
 
     @property
