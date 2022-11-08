@@ -109,21 +109,6 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
         background = background_stack.mean(dim="time")
         return background
 
-    @staticmethod
-    def bkg_scaler(x, y, bkg, qmin=1, qmax=2):
-        fgd_sum = np.sum(y[(x > qmin) & (x < qmax)])
-        bgd_sum = np.sum(bkg["chi_I"][(bkg["chi_Q"] > qmin) & (bkg["chi_Q"] < qmax)])
-        return fgd_sum / bgd_sum
-
-    def unpack_run(self, run):
-        """Interpolates intensity onto the standard Q space."""
-        x = run.primary.data["chi_Q"][0]
-        y = run.primary.data["chi_I"][0]
-        scaler = self.bkg_scaler(x, y, self.background)
-        y = np.array(y) - float(scaler) * np.array(self.background["chi_I"])
-        y = (y - y.min()) / (y.max() - y.min())
-        return run.start["Grid_X"]["Grid_X"]["value"], y
-
     def generate_subject_ask(self) -> list:
         """Alternate NMF and KMeans to find the most interesting triplet."""
         data = np.stack(self.dependent_cache)

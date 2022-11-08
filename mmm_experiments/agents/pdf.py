@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Literal, Optional, Tuple, Union
 
 import numpy as np
+import xarray
 from databroker.client import BlueskyRun
 from tiled.client import from_profile
 
@@ -61,6 +62,8 @@ class PDFAgent(Agent, ABC):
         self.exp_catalog = from_profile("pdf_bluesky_sandbox")
         self.sample_origin = sample_origin
         self._relative_bounds = relative_bounds
+        self.xrd_background = self.get_wafer_background("xrd")
+        self.pdf_background = self.get_wafer_background("pdf")
 
     @property
     def measurement_origin(self):
@@ -78,11 +81,30 @@ class PDFAgent(Agent, ABC):
         md = {"relative_position": point}
         return {"sample_number": 16, "md": md}
 
+    def get_wafer_background(self, mode="pdf"):
+        background_runs = self.exp_catalog.search({"sample_name": f"{mode}_MTwafer"}).values_indexer[:]
+        return xarray.concat((r.primary.read(["chi_Q", "chi_I"]) for r in background_runs), dim="time").mean(
+            dim="time"
+        )
+
     @staticmethod
-    def unpack_run(run: BlueskyRun):
-        """"""
-        # x = np.array(run.primary.data["chi_2theta"][0])
-        y = np.array(run.primary.data["chi_I"][0])
+    def bkg_scaler(x, y, bkg, qmin=1.55, qmax=1.65):
+        fgd_sum = np.sum(y[(x > qmin) & (x < qmax)])
+        bgd_sum = np.sum(bkg["chi_I"][(bkg["chi_Q"] > qmin) & (bkg["chi_Q"] < qmax)])
+        return fgd_sum / bgd_sum
+
+    def unpack_run(self, run: BlueskyRun):
+        """Removes background"""
+        x = run.primary.data["chi_Q"][0]
+        y = run.primary.data["chi_I"][0]
+        # Big ditances use XRD, short distances are pdf
+        if run.start["det1z"] > 4000:
+            background = self.xrd_background
+        else:
+            background = self.pdf_background
+        scaler = self.bkg_scaler(x, y, background)
+        y = np.array(y) - float(scaler) * np.array(background["chi_I"])
+        y = (y - y.min()) / (y.max() - y.min())
         return run.start["Grid_X"]["Grid_X"]["value"], y
 
     def report(self):
