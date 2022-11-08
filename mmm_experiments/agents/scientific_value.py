@@ -1,8 +1,8 @@
-from typing import Optional
+from typing import Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
-from botorch.acquisition import ExpectedImprovement, qExpectedImprovement
+from botorch.acquisition import UpperConfidenceBound, qUpperConfidenceBound
 from botorch.fit import fit_gpytorch_model
 from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
@@ -10,16 +10,11 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 from scipy.spatial import distance_matrix
 
 
-def next_closest_raster_scan_point(
-    proposed_points,
-    observed_points,
-    possible_coordinates,
-    eps=1e-8
-):
+def next_closest_raster_scan_point(proposed_points, observed_points, possible_coordinates, eps=1e-8):
     """A helper function which determines the closest grid point for every
     proposed points, under the constraint that the proposed point is not
     present in the currently observed points, given possible coordinates.
-    
+
     Parameters
     ----------
     proposed_points : array_like
@@ -68,13 +63,7 @@ def next_closest_raster_scan_point(
     return np.array(actual_points)
 
 
-def scientific_value_function(
-    X,
-    Y,
-    sd=None,
-    multiplier=1.0,
-    y_distance_function=None
-):
+def scientific_value_function(X, Y, sd=None, multiplier=1.0, y_distance_function=None):
     """The value of two datasets, X and Y. Both X and Y must have the same
     number of rows. The returned result is a value of value for each of the
     data points.
@@ -137,20 +126,22 @@ class ScientificValueAgentMixin:
     def __init__(
         self,
         *,
+        beta=20.0,
         device: Union[torch.device, str],
         length_scale: Optional[float] = None,
         y_distance_function: Optional[callable] = None,
-        optimize_acqf_kwargs: dict = {
-            "q": 1, "num_restarts": 5, "raw_samples": 20
-        },
+        optimize_acqf_kwargs: Optional[dict] = None,
         possible_coordinates: Optional[np.ndarray] = None,
         **kwargs
     ):
         super().__init__(**kwargs)
+        self._beta = beta
         self.device = device
         self._length_scale = length_scale
         self._y_distance_function = y_distance_function
-        self._optimize_acqf_kwargs = optimize_acqf_kwargs
+        self._optimize_acqf_kwargs = self.default_acqf_kwargs().update(
+            {} if optimize_acqf_kwargs is None else optimize_acqf_kwargs
+        )
 
         # Possible coordinatse should be an array of shape L x d, where L is
         # the number of possible coordinates and d is the dimension of the
@@ -163,10 +154,20 @@ class ScientificValueAgentMixin:
         self._relative_positions_cache = []
         self._value_cache = []
 
+    @staticmethod
+    def default_acqf_kwargs():
+        return {"num_restarts": 5, "raw_samples": 20}
+
+    def _value_function(self, X, Y):
+        return scientific_value_function(X, Y, sd=self._length_scale)
+
+    def update_acqf_kwargs(self, **kwargs):
+        """User exposed function to update acquisition function kwargs"""
+        self._optimize_acqf_kwargs.update(kwargs)
+
     def tell(self, position, observation):
         """Takes the position of the motor and an arbitrary observation which
-        is a function of that position, computes the value of this site, and
-        appends the proper caches.
+        is a function of that position, and appends the proper caches.
 
         Parameters
         ----------
@@ -189,67 +190,63 @@ class ScientificValueAgentMixin:
         self._relative_positions_cache.append(relative_position)
         self._observations_cache.append(observation)
 
-        # Compute the value
-        X = np.array(self._relative_positions_cache)
-        Y = np.array(self._observations_cache)
-        V = scientific_value_function(X, Y, sd=self._length_scale)
-
-        # The value is a scalar
-        V = V.reshape(-1, 1)
-
         return dict(
             position=[position],
             rel_position=[relative_position],
             observation=[observation],
             cache_len=[len(self._relative_positions_cache)],
-            value=[V.squeeze()[-1]]
         )
 
-    def ask(self, optimize_acqf_kwargs=None):
-
-        train_x = torch.tensor(
-            self._relative_positions_cache, dtype=torch.float
+    def report(self):
+        # The value is a scalar
+        value = self._value_function(np.array(self._relative_positions_cache), np.array(self._observations_cache))
+        value = value.reshape(-1, 1)
+        return dict(
+            position=[self._positions_cache],
+            rel_position=[self._relative_positions_cache],
+            observation=[self._observations_cache],
+            cache_len=[len(self._relative_positions_cache)],
+            value=[value.squeeze()],
         )
-        train_x = train_x.to(self._device)
-        train_y = torch.tensor(self._observations_cache, dtype=torch.float)
-        train_y = train_y.to(self._device)
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+
+        value = self._value_function(np.array(self._relative_positions_cache), np.array(self._observations_cache))
+        value = value.reshape(-1, 1)
+
+        train_x = torch.tensor(self._relative_positions_cache, dtype=torch.float)
+        train_x = train_x.to(self.device)
+        train_y = torch.tensor(value, dtype=torch.float)
+        train_y = train_y.to(self.device)
 
         gp = SingleTaskGP(train_x, train_y).to(self.device)
         mll = ExactMarginalLogLikelihood(gp.likelihood, gp).to(self.device)
         fit_gpytorch_model(mll)
-
-        if optimize_acqf_kwargs is None:
-            optimize_acqf_kwargs = self._optimize_acqf_kwargs
-
-        if optimize_acqf_kwargs["q"] == 1:
-            acq = ExpectedImprovement(gp, best_f=torch.max(train_y).item())
-        else:
-            acq = qExpectedImprovement(gp, best_f=torch.max(train_y).item())
+        acq = (
+            UpperConfidenceBound(gp, beta=self._beta)
+            if batch_size == 1
+            else qUpperConfidenceBound(gp, beta=self._beta)
+        )
 
         next_points, acq_value = optimize_acqf(
             acq,
             bounds=self.relative_bounds,
-            **optimize_acqf_kwargs,
+            **self._optimize_acqf_kwargs,
         )
 
         if self._possible_coordinates is not None:
             next_points = next_closest_raster_scan_point(
-                next_points,
-                train_x.detach().numpy(),
-                self._possible_coordinates,
-                eps=1e-8
+                next_points, train_x.detach().numpy(), self._possible_coordinates, eps=1e-8
             )
 
-        if optimize_acqf_kwargs["q"] == 1:
+        if batch_size == 1:
             next_points = [float(next_points.to("cpu"))]
         else:
             next_points = [float(x.to("cpu")) for x in next_points]
 
         doc = dict(
-            batch_size=[optimize_acqf_kwargs["q"]],
+            batch_size=[batch_size],
             next_points=[next_points],
-            acq_value=[float(x.to("cpu")) for x in acq_value]
-            if optimize_acqf_kwargs["q"] > 1
-            else [float(acq_value.to("cpu"))],
+            acq_value=[float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))],
         )
         return doc, next_points

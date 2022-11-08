@@ -6,10 +6,16 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from botorch.acquisition import UpperConfidenceBound, qUpperConfidenceBound
+from botorch.fit import fit_gpytorch_model
+from botorch.models import SingleTaskGP
+from botorch.optim import optimize_acqf
 from constrainedmf.nmf.models import NMF
 from constrainedmf.nmf.utils import iterative_nmf
+from gpytorch.mlls import ExactMarginalLogLikelihood
 from scipy.interpolate import interp1d
 
+from mmm_experiments.agents.scientific_value import scientific_value_function
 from mmm_experiments.viz.plotting import independent_waterfall, min_max_normalize
 
 logger = logging.getLogger(name="mmm.ml_mixins")
@@ -179,7 +185,7 @@ class CMFMixin:
 
         # Residual plot
         residuals = doc["residuals"][0]
-        alpha = min_max_normalize(np.mean(residuals ** 2, axis=1))
+        alpha = min_max_normalize(np.mean(residuals**2, axis=1))
         independent_waterfall(
             residual_ax, doc["sorted_positions"], np.arange(len(residuals)), residuals, alphas=alpha
         )
@@ -293,7 +299,7 @@ class XCAMixin:
 
         return doc
 
-    def report(self):
+    def report(self, **kwargs):
         """Return document of all relevant caches for plotting. Expected shapes/types in comments."""
         return dict(
             absolute_positions=[[pos + self.measurement_origin for pos in self.independent_cache]],  # List[float]
@@ -310,3 +316,72 @@ class XCAMixin:
 
     def ask(self):
         raise NotImplementedError("Basic XCA Mixin is a passive agent.")
+
+
+class XCAValueMixin(XCAMixin):
+    """
+    XCA Mixin that incorperates scientific value function into ask and report
+    Parameters
+    ----------
+    xca_device : Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+        Device to deploy forward model on. Available devices on tritium listed.
+    botorch_device : Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+        Device to deploy bayes opt model on. Available devices on tritium listed.
+    beta : float
+        beta value for upper confidence bound acquisition function
+    kwargs
+    """
+
+    def __init__(
+        self,
+        *,
+        xca_device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+        botorch_device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+        beta=20.0,
+        **kwargs,
+    ):
+        super().__init__(device=xca_device, **kwargs)
+        self.botorch_device = botorch_device
+        self._beta = beta
+
+    def report(self, **kwargs):
+        doc = super().report(**kwargs)
+        value = scientific_value_function(np.array(self.independent_cache), np.stack(self.latent_cache)).reshape(
+            -1, 1
+        )
+        doc["value"] = value.squeeze()
+        doc["cache_len"] = len(self.independent_cache)
+        return doc
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        value = scientific_value_function(np.array(self.independent_cache), np.stack(self.latent_cache)).reshape(
+            -1, 1
+        )
+        train_x = torch.tensor(np.array(self.independent_cache), dtype=torch.float, device=self.botorch_device)
+        train_y = torch.tensor(value, dtype=torch.float, device=self.botorch_device)
+
+        gp = SingleTaskGP(train_x, train_y).to(self.botorch_device)
+        mll = ExactMarginalLogLikelihood(gp.likelihood, gp).to(self.botorch_device)
+        fit_gpytorch_model(mll)
+        acq = (
+            UpperConfidenceBound(gp, beta=self._beta)
+            if batch_size == 1
+            else qUpperConfidenceBound(gp, beta=self._beta)
+        )
+        next_points, acq_value = optimize_acqf(
+            acq, bounds=self.relative_bounds, q=batch_size, num_restarts=5, raw_samples=20
+        )
+        next_points = (
+            [float(next_points.cpu().numpy())]
+            if batch_size == 1
+            else [float(x.cpu().numpy()) for x in next_points]
+        )
+        acq_value = (
+            [float(acq_value.cpu().numpy())] if batch_size == 1 else [float(x.cpu().numpy()) for x in acq_value]
+        )
+        doc = dict(
+            batch_size=[batch_size],
+            next_points=[next_points],
+            acq_value=[acq_value],
+        )
+        return doc, next_points
