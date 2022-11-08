@@ -79,7 +79,7 @@ class PDFAgent(Agent, ABC):
 
     def measurement_plan_kwargs(self, point) -> dict:
         md = {"relative_position": point}
-        return {"sample_number": 16, "md": md}
+        return {"sample_number": 0, "md": md}
 
     def get_wafer_background(self, mode="pdf"):
         ignore_uids = [
