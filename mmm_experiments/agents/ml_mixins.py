@@ -250,6 +250,10 @@ class XCAMixin:
         self.loss_cache = []
         self.shannon_cache = []
 
+    @property
+    def name(self):
+        return "xca"
+
     def unpack_run(self, run: BlueskyRun):
         """
         Overrides standard unpack run to extract extra metadata
@@ -342,6 +346,10 @@ class XCAValueMixin(XCAMixin):
         super().__init__(device=xca_device, **kwargs)
         self.botorch_device = botorch_device
         self._beta = beta
+
+    @property
+    def name(self):
+        return "xca_value"
 
     def report(self, **kwargs):
         doc = super().report(**kwargs)
