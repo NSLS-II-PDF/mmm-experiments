@@ -40,6 +40,9 @@ class Agent(ABC):
         To create a truly passive agent, it is best to implement ask as a method that does nothing.
         To create an agent that only suggests new points periodically or on another trigger, `ask_on_tell`
         should be set to False.
+    direct_to_queue: Optional[bool]
+        Whether the agent suggestions will be placed directly on the queue. If false,
+        the suggestions will be sent to a Kafka topic for an Adjudicator to process.
     report_on_tell : bool
         Whether to create a report every time an agent is told about new data.
     default_report_kwargs : dict
@@ -52,6 +55,7 @@ class Agent(ABC):
         beamline_tla: str,
         metadata: Optional[dict] = None,
         ask_on_tell: bool = True,
+        direct_to_queue: Optional[bool] = True,
         report_on_tell: bool = False,
         default_report_kwargs=None,
     ):
@@ -100,6 +104,7 @@ class Agent(ABC):
         self.re_manager = REManagerAPI(http_server_uri=self.server_host)
         self.re_manager.set_authorization_key(api_key=self.api_key)
         self._queue_add_position = "back"
+        self._direct_to_queue = direct_to_queue
         self.default_plan_md = dict(
             agent_name=self.agent_name,
             agent_class=str(type(self)),
@@ -294,6 +299,12 @@ class Agent(ABC):
         """Disable agent to suggest new points to the queue each time it receives data."""
         self.ask_on_tell = False
 
+    def enable_direct_to_queue(self):
+        self._direct_to_queue = True
+
+    def disable_direct_to_queue(self):
+        self._direct_to_queue = False
+
     @property
     def name(self) -> str:
         """Short string name"""
@@ -424,7 +435,10 @@ class Agent(ABC):
             if self.report_on_tell:
                 self.generate_report(**self.default_report_kwargs)
             if self.ask_on_tell:
-                self.add_suggestions_to_queue(1)
+                if self._direct_to_queue:
+                    self.add_suggestions_to_queue(1)
+                else:
+                    self.generate_suggestions_for_adjudicator(1)
 
     def tell_agent_by_uid(self, uids: Iterable):
         """Give an agent an iterable of uids to learn from.
