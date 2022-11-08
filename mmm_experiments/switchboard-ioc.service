@@ -5,7 +5,7 @@ Description=0MQ bridge being used for MMM experiments
 User=xf28id1
 Group=xf28id1
 Environment="PATH=/home/xf28id1/project-mmm/mmm-experiments/venv/bin/:$PATH EPICS_CAS_AUTO_BEACON_ADDR_LIST=no  EPICS_CAS_BEACON_ADDR_LIST=10.66.219.255"
-ExecStart=/home/xf28id1/project-mmm/mmm-experiments/venv/bin/python3 -m mmm_experiments.ioc.switchboard --xf 'XF:28ID1-DA' --list-pvs --interface=10.66.219.41 -vv
+ExecStart=/home/xf28id1/project-mmm/mmm-experiments/venv/bin/python3 -m mmm_experiments.ioc.switchboard --xf 'XF:28ID1-DA' --list-pvs -v
 Restart=always
 
 [Install]
