@@ -2,7 +2,7 @@ from typing import Optional, Union
 
 import numpy as np
 import torch
-from botorch.acquisition import ExpectedImprovement, qExpectedImprovement
+from botorch.acquisition import UpperConfidenceBound, qUpperConfidenceBound
 from botorch.fit import fit_gpytorch_model
 from botorch.models import SingleTaskGP
 from botorch.optim import optimize_acqf
@@ -126,6 +126,7 @@ class ScientificValueAgentMixin:
     def __init__(
         self,
         *,
+        beta=20.0,
         device: Union[torch.device, str],
         length_scale: Optional[float] = None,
         y_distance_function: Optional[callable] = None,
@@ -134,6 +135,7 @@ class ScientificValueAgentMixin:
         **kwargs
     ):
         super().__init__(**kwargs)
+        self._beta = beta
         self.device = device
         self._length_scale = length_scale
         self._y_distance_function = y_distance_function
@@ -205,9 +207,12 @@ class ScientificValueAgentMixin:
 
     def ask(self, optimize_acqf_kwargs=None):
 
+        value = self._value_function(np.array(self._relative_positions_cache), np.array(self._observations_cache))
+        value = value.reshape(-1, 1)
+
         train_x = torch.tensor(self._relative_positions_cache, dtype=torch.float)
         train_x = train_x.to(self.device)
-        train_y = torch.tensor(self._observations_cache, dtype=torch.float)
+        train_y = torch.tensor(value, dtype=torch.float)
         train_y = train_y.to(self.device)
 
         gp = SingleTaskGP(train_x, train_y).to(self.device)
@@ -218,9 +223,9 @@ class ScientificValueAgentMixin:
             optimize_acqf_kwargs = self._optimize_acqf_kwargs
 
         if optimize_acqf_kwargs["q"] == 1:
-            acq = ExpectedImprovement(gp, best_f=torch.max(train_y).item())
+            acq = UpperConfidenceBound(gp, beta=self._beta)
         else:
-            acq = qExpectedImprovement(gp, best_f=torch.max(train_y).item())
+            acq = qUpperConfidenceBound(gp, beta=self._beta)
 
         next_points, acq_value = optimize_acqf(
             acq,
