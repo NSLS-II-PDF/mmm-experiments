@@ -13,7 +13,13 @@ from botorch.optim import optimize_acqf
 from gpytorch.mlls import ExactMarginalLogLikelihood
 
 from ..data.bmm_utils import Pandrosus
-from .base import Agent, DrowsyAgent, RandomAgentMixin, SequentialAgentMixin
+from .base import (
+    Agent,
+    DrowsyAgent,
+    GeometricResolutionMixin,
+    RandomAgentMixin,
+    SequentialAgentMixin,
+)
 
 
 class DrowsyBMMAgent(DrowsyAgent):
@@ -157,6 +163,10 @@ class RandomAgent(RandomAgentMixin, BMMAgent):
     Hears a stop document and immediately suggests a random point within the bounds.
     Uses the same signature as SequentialAgent.
     """
+
+
+class GeometricAgent(GeometricResolutionMixin, BMMAgent):
+    """Geometric series for exploration at BMM"""
 
 
 class DumbDistanceEXAFSAgent(BMMAgent):
