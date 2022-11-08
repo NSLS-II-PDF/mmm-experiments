@@ -327,6 +327,7 @@ class Agent(ABC):
         """
         for point in next_points:
             kwargs = self.measurement_plan_kwargs(point)
+            kwargs.setdefault("md", {})
             kwargs["md"].update(self.default_plan_md)
             kwargs["md"]["agent_ask_uid"] = uid
             plan = BPlan(
