@@ -14,6 +14,10 @@ logger = logging.getLogger(name="mmm.kafka")
 A namedtuple for holding details of the publisher created by
 _subscribe_kafka_publisher.
 """
+_SubscribeKafkaPublisherDetails = namedtuple(
+    "SubscribeKafkaPublisherDetails",
+    {"beamline_topic", "bootstrap_servers", "producer_config", "re_subscribe_token"},
+)
 
 
 def _subscribe_kafka_publisher(
