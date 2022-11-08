@@ -423,7 +423,7 @@ class Agent(ABC):
             if self.report_on_tell:
                 self.generate_report(**self.default_report_kwargs)
             if self.ask_on_tell:
-                self.add_suggestions(1)
+                self.add_suggestions_to_queue(1)
 
     def tell_agent_by_uid(self, uids: Iterable):
         """Give an agent an iterable of uids to learn from.
@@ -442,7 +442,7 @@ class Agent(ABC):
         logging.info(f"Agent name={self.builder._cache.start_doc['agent_name']}")
         logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
         if ask_at_start:
-            self.add_suggestions(1)
+            self.add_suggestions_to_queue(1)
         self.kafka_consumer.start()
 
     def restart(self, uid):

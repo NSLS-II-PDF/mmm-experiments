@@ -17,7 +17,7 @@ if __name__ == "__main__":
             botorch_device="cuda:3",
             xca_device="cuda:2",
             model_qspace=np.linspace(0.065, 7.89, 3000),
-            model_checkpoint=Path(__file__).parent / "models" / "2022-nov" / "low_q_low_fidelity.ckpt",
+            model_checkpoint=Path(__file__).parents[1] / "models" / "2022-nov" / "low_q_low_fidelity.ckpt",
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.start(ask_at_start=True)
