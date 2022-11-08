@@ -382,15 +382,20 @@ class Agent(ABC):
         logging.debug("Issuing ask and sending to adjudicator.")
         doc, next_points = self.ask(batch_size)
         uid = self._write_event("ask", doc)
-        suggestions = [
-            Suggestion(
-                ask_uid=uid,
-                plan_name=self.measurement_plan_name,
-                args=self.measurement_plan_args(point),
-                kwargs=self.measurement_plan_kwargs(point),
+        suggestions = []
+        for point in next_points:
+            kwargs = self.measurement_plan_kwargs(point)
+            kwargs.setdefault("md", {})
+            kwargs["md"].update(self.default_plan_md)
+            kwargs["md"]["agent_ask_uid"] = uid
+            suggestions.append(
+                Suggestion(
+                    ask_uid=uid,
+                    plan_name=self.measurement_plan_name,
+                    args=self.measurement_plan_args(point),
+                    kwargs=self.measurement_plan_kwargs(point),
+                )
             )
-            for point in next_points
-        ]
         msg = AdjudicatorMsg(
             agent_name=self.agent_name,
             suggestions_uid=str(uuid.uuid4()),
