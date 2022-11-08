@@ -58,6 +58,36 @@ def replay(gen, callback, burst=False, delay=0):
             _process_document(name, doc, cache, offset, callback, burst, delay)
 
 
+def get_latest_document(run, doc_type):
+    """
+    Get the latest of any individual document type. A slow lookup that involves replaying
+    the stream of data.
+    Parameters
+    ----------
+    run : BlueskyRun
+    doc_type : str
+        One of "tell", "report", and "ask"
+
+    Returns
+    -------
+
+    """
+    latest = None
+    descriptor_cache = {}
+
+    def _callback(name, doc):
+        nonlocal latest
+        if name == "descriptor":
+            descriptor_cache[doc["uid"]] = doc["name"]
+        if name == "event":
+            stream = descriptor_cache[doc["descriptor"]]
+            if stream == doc_type:
+                latest = doc
+
+    replay(run.documents(), _callback, burst=True)
+    return latest
+
+
 def load_full_xca_run(uid):
     measured_data = []
     # measured_positions = []
