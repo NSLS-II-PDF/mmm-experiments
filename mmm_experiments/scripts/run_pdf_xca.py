@@ -18,9 +18,11 @@ if __name__ == "__main__":
             xca_device="cuda:2",
             model_qspace=np.linspace(0.065, 7.89, 3000),
             model_checkpoint=Path(__file__).parents[1] / "models" / "2022-nov" / "low_q_low_fidelity.ckpt",
+            ask_on_tell=False,
+            report_on_tell=True,
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
-        agent.start(ask_at_start=True)
+        agent.start(ask_at_start=False)
     except Exception as e:
         agent.stop(exit_status="fail", reason=f"{e}")
         raise e
