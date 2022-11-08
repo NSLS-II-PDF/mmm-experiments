@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import logging
+from collections import namedtuple
 
 try:
     from nslsii import _read_bluesky_kafka_config_file
