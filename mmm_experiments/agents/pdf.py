@@ -107,7 +107,7 @@ class PDFAgent(Agent, ABC):
         x = run.primary.data["chi_Q"][0]
         y = run.primary.data["chi_I"][0]
         # Big ditances use XRD, short distances are pdf
-        if run.start["det1z"] > 4000:
+        if run.start["Det_1_Z"]["Det_1_Z"]["value"] > 4000:
             background = self.xrd_background
         else:
             background = self.pdf_background
