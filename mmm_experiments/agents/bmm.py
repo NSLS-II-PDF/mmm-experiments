@@ -74,7 +74,7 @@ class BMMSingleEdgeAgent(Agent, ABC):
             filename="MultimodalMadnessElectionDay",
             nscans=1,
             start="next",
-            mode="fluorescence",
+            mode="transmission",
             edge="L3",
             element="Pt",
             sample="PtZr",
