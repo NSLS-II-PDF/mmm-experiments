@@ -6,8 +6,8 @@ from confluent_kafka import Producer
 from nslsii import _read_bluesky_kafka_config_file
 
 
-@bpp.run_decorator(md={})
-def agent_driven_nap(delay: float, *, delay_kwarg: float = 0):
+@bpp.run_decorator()
+def agent_driven_nap(delay: float, *, delay_kwarg: float = 0, md=None):
     """Ensuring we can auto add 'agent_' plans and use args/kwargs"""
     if delay_kwarg:
         yield from bps.sleep(delay_kwarg)
