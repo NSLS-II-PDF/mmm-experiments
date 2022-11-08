@@ -27,20 +27,10 @@ To grab at specific documents from Tiled, the interface is a little clunky (for 
 recent `report` from an agent_name. I will work on getting this functionality into the repo soon.:
 ```python
 from tiled.client import from_profile
-from mmm_experiments.data.agent_loaders import replay
+from mmm_experiments.data.agent_loaders import get_latest_document
 client = from_profile("pdf_bluesky_sandbox")
 run = client.search({"agent_name": "agent-musty-aversion"}).values_indexer[0]
-descriptor_cache = {}
-def _callback(name, doc):
-    if name == "descriptor":
-            descriptor_cache[doc["uid"]] = doc["name"]
-    if name == "event":
-        stream = descriptor_cache[doc["descriptor"]]
-        if stream == "report":
-           data = doc["data"]
-    return data
-for name, doc in run.documents():
-    data = _callback(name, doc)
+tell_doc = get_latest_document(run, "tell")
 ```
 
 
