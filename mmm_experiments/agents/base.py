@@ -363,7 +363,7 @@ class Agent(ABC):
         if not doc:
             return
         if stream in self.builder._streams:
-            self.builder.add_data(stream, data=doc, uid=uid)
+            self.builder.add_data(stream, data=doc)
         else:
             self.builder.add_stream(stream, data=doc)
             self.agent_catalog.v1.insert(*self.builder._cache._ordered[-2])  # Add descriptor for first time
