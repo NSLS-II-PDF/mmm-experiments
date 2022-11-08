@@ -169,6 +169,7 @@ class MonarchPDFSubjectBMM(GeometricResolutionMixin, MonarchSubjectBase, PDFAgen
                 )
                 if r["success"] is True:
                     self.bmm_request_cache.add(point)
+            self.bmm_last_request = time.time()
         return doc, points
 
 
@@ -203,7 +204,7 @@ class MonarchBMMSubjectPDF(GeometricResolutionMixin, MonarchSubjectBase, BMMAgen
     def generate_subject_ask(self) -> list:
         """BMM asks PDF to measure it's most distinct signal. Construct distance matrix and sum"""
         data = np.stack(self.dependent_cache)
-        dists = -2 * np.dot(data, data.T) + np.sum(data ** 2, axis=1) + np.sum(data ** 2, axis=1)[:, np.newaxis]
+        dists = -2 * np.dot(data, data.T) + np.sum(data**2, axis=1) + np.sum(data**2, axis=1)[:, np.newaxis]
         return [self.independent_cache[np.argmax(np.sum(dists, axis=-1))]]
 
     def tell(self, position, y):
