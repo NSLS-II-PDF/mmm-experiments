@@ -85,11 +85,11 @@ class Agent(ABC):
             producer_config=self.kafka_config["runengine_producer_config"],
         )
         logging.debug("Kafka setup sucessfully.")
-        self.exp_catalog = (
-            from_profile("pdf_bluesky_sandbox") if beamline_tla == "pdf" else from_profile(beamline_tla)
-        )
+        exp_profile_name = "pdf_bluesky_sandbox" if beamline_tla == "pdf" else beamline_tla
+        self.exp_catalog = from_profile(exp_profile_name)
         logging.info(f"Reading data from catalog: {self.exp_catalog}")
-        self.agent_catalog = from_profile(f"{beamline_tla}_bluesky_sandbox")
+        agent_profile_name = f"{beamline_tla}_bluesky_sandbox"
+        self.agent_catalog = from_profile(agent_profile_name)
         logging.info(f"Writing data to catalog: {self.agent_catalog}")
         self.metadata = metadata or {}
         self.metadata["beamline_tla"] = self.beamline_tla = beamline_tla
@@ -108,8 +108,8 @@ class Agent(ABC):
         self.default_plan_md = dict(
             agent_name=self.agent_name,
             agent_class=str(type(self)),
-            tiled_data_profile=str(self.exp_catalog),
-            tiled_agent_profile=str(self.agent_catalog),
+            tiled_data_profile=exp_profile_name,
+            tiled_agent_profile=agent_profile_name,
         )
 
     @property
