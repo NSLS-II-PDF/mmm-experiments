@@ -71,6 +71,10 @@ class CMFMixin:
         """Convenience method exposed to plans for updating via kafka."""
         self.num_components = num_components
 
+    def update_ask_mode(self, ask_mode: str):
+        """Convenience method exposed to plans for updating via kafka."""
+        self.ask_mode = ask_mode
+
     def tell(self, position, y) -> dict:
         relative_position = position - self.measurement_origin
         self.independent_cache.append(relative_position)
