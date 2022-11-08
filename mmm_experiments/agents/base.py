@@ -74,7 +74,12 @@ class Agent(ABC):
             beamline_tla=beamline_tla,
             bluesky_callbacks=(self._on_stop_router,),
         )
-        self.kafka_producer = Publisher(topic=f"{beamline_tla}.mmm.bluesky.adjudicators")
+        self.kafka_producer = Publisher(
+            topic=f"{beamline_tla}.mmm.bluesky.adjudicators",
+            bootstrap_servers=",".join(self.kafka_config["bootstrap_servers"]),
+            key="",
+            producer_config=self.kafka_config["runengine_producer_config"],
+        )
         logging.debug("Kafka setup sucessfully.")
         self.exp_catalog = (
             from_profile("pdf_bluesky_sandbox") if beamline_tla == "pdf" else from_profile(beamline_tla)
@@ -376,7 +381,9 @@ class Agent(ABC):
             for point in next_points
         ]
         msg = AdjudicatorMsg(
-            agent_name=self.agent_name, suggestions_uid=str(uuid.uuid4()), suggestions={self.beamline_tla: suggestions}
+            agent_name=self.agent_name,
+            suggestions_uid=str(uuid.uuid4()),
+            suggestions={self.beamline_tla: suggestions},
         )
         self.kafka_producer(ADJUDICATOR_STREAM_NAME, msg.dict())
 
@@ -417,7 +424,7 @@ class Agent(ABC):
             if self.report_on_tell:
                 self.generate_report(**self.default_report_kwargs)
             if self.ask_on_tell:
-                self.add_suggestions(1)
+                self.add_suggestions_to_queue(1)
 
     def tell_agent_by_uid(self, uids: Iterable):
         """Give an agent an iterable of uids to learn from.
@@ -436,7 +443,7 @@ class Agent(ABC):
         logging.info(f"Agent name={self.builder._cache.start_doc['agent_name']}")
         logging.info(f"Agent start document uuid={self.builder._cache.start_doc['uid']}")
         if ask_at_start:
-            self.add_suggestions(1)
+            self.add_suggestions_to_queue(1)
         self.kafka_consumer.start()
 
     def restart(self, uid):

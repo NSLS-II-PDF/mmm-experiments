@@ -229,14 +229,13 @@ class XCAMixin:
         self.independent_cache = []
         self.dependent_cache = []
         self.q_space = model_qspace
-        self.checkpoint = torch.load(str(model_checkpoint))
         self.device = torch.device(device)
+        self.checkpoint = torch.load(str(model_checkpoint), map_location=self.device)
 
         # Load lightning module
-        checkpoint = torch.load(str("last.ckpt"), map_location=self.device)
-        self.cnn = EnsembleCNN(**checkpoint["hyper_parameters"]["classifier_hparams"])
-        self.encoder = CNNEncoder(**checkpoint["hyper_parameters"]["encoder_hparams"])
-        self.decoder = CNNDecoder(**checkpoint["hyper_parameters"]["decoder_hparams"])
+        self.cnn = EnsembleCNN(**self.checkpoint["hyper_parameters"]["classifier_hparams"])
+        self.encoder = CNNEncoder(**self.checkpoint["hyper_parameters"]["encoder_hparams"])
+        self.decoder = CNNDecoder(**self.checkpoint["hyper_parameters"]["decoder_hparams"])
         self.vae = VAE(self.encoder, self.decoder)
         self.pl_module = JointVAEClassifierModule.load_from_checkpoint(
             model_checkpoint, classification_model=self.cnn, vae_model=self.vae
@@ -250,6 +249,10 @@ class XCAMixin:
         self.reconstruction_cache = []
         self.loss_cache = []
         self.shannon_cache = []
+
+    @property
+    def name(self):
+        return "xca"
 
     def unpack_run(self, run: BlueskyRun):
         """
@@ -343,6 +346,10 @@ class XCAValueMixin(XCAMixin):
         super().__init__(device=xca_device, **kwargs)
         self.botorch_device = botorch_device
         self._beta = beta
+
+    @property
+    def name(self):
+        return "xca_value"
 
     def report(self, **kwargs):
         doc = super().report(**kwargs)

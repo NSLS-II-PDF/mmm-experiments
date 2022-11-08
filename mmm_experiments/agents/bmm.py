@@ -51,6 +51,7 @@ class BMMAgent(Agent, ABC):
         Ti_det_position: float,
         relative_bounds: Tuple[float, float],
         metadata: Optional[dict] = None,
+        **kwargs,
     ):
         """
 
@@ -70,7 +71,7 @@ class BMMAgent(Agent, ABC):
         metadata : dict
             Optional metadata dictionary for the agent start document
         """
-        super().__init__(beamline_tla="bmm", metadata=metadata)
+        super().__init__(beamline_tla="bmm", metadata=metadata, **kwargs)
         self.Cu_origin = Cu_origin
         self.Ti_origin = Ti_origin
         self.Cu_det_position = Cu_det_position
