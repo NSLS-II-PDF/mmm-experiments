@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
@@ -156,10 +156,14 @@ class ScientificValueAgentMixin:
 
     @staticmethod
     def default_acqf_kwargs():
-        return {"q": 1, "num_restarts": 5, "raw_samples": 20}
+        return {"num_restarts": 5, "raw_samples": 20}
 
     def _value_function(self, X, Y):
         return scientific_value_function(X, Y, sd=self._length_scale)
+
+    def update_acqf_kwargs(self, **kwargs):
+        """User exposed function to update acquisition function kwargs"""
+        self._optimize_acqf_kwargs.update(kwargs)
 
     def tell(self, position, observation):
         """Takes the position of the motor and an arbitrary observation which
@@ -205,7 +209,7 @@ class ScientificValueAgentMixin:
             value=[value.squeeze()],
         )
 
-    def ask(self, optimize_acqf_kwargs=None):
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
 
         value = self._value_function(np.array(self._relative_positions_cache), np.array(self._observations_cache))
         value = value.reshape(-1, 1)
@@ -218,19 +222,16 @@ class ScientificValueAgentMixin:
         gp = SingleTaskGP(train_x, train_y).to(self.device)
         mll = ExactMarginalLogLikelihood(gp.likelihood, gp).to(self.device)
         fit_gpytorch_model(mll)
-
-        if optimize_acqf_kwargs is None:
-            optimize_acqf_kwargs = self._optimize_acqf_kwargs
-
-        if optimize_acqf_kwargs["q"] == 1:
-            acq = UpperConfidenceBound(gp, beta=self._beta)
-        else:
-            acq = qUpperConfidenceBound(gp, beta=self._beta)
+        acq = (
+            UpperConfidenceBound(gp, beta=self._beta)
+            if batch_size == 1
+            else qUpperConfidenceBound(gp, beta=self._beta)
+        )
 
         next_points, acq_value = optimize_acqf(
             acq,
             bounds=self.relative_bounds,
-            **optimize_acqf_kwargs,
+            **self._optimize_acqf_kwargs,
         )
 
         if self._possible_coordinates is not None:
@@ -238,16 +239,14 @@ class ScientificValueAgentMixin:
                 next_points, train_x.detach().numpy(), self._possible_coordinates, eps=1e-8
             )
 
-        if optimize_acqf_kwargs["q"] == 1:
+        if batch_size == 1:
             next_points = [float(next_points.to("cpu"))]
         else:
             next_points = [float(x.to("cpu")) for x in next_points]
 
         doc = dict(
-            batch_size=[optimize_acqf_kwargs["q"]],
+            batch_size=[batch_size],
             next_points=[next_points],
-            acq_value=[float(x.to("cpu")) for x in acq_value]
-            if optimize_acqf_kwargs["q"] > 1
-            else [float(acq_value.to("cpu"))],
+            acq_value=[float(x.to("cpu")) for x in acq_value] if batch_size > 1 else [float(acq_value.to("cpu"))],
         )
         return doc, next_points
