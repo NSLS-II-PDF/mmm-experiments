@@ -229,8 +229,8 @@ class XCAMixin:
         self.independent_cache = []
         self.dependent_cache = []
         self.q_space = model_qspace
-        self.checkpoint = torch.load(str(model_checkpoint), map_location=self.device)
         self.device = torch.device(device)
+        self.checkpoint = torch.load(str(model_checkpoint), map_location=self.device)
 
         # Load lightning module
         self.cnn = EnsembleCNN(**self.checkpoint["hyper_parameters"]["classifier_hparams"])
