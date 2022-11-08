@@ -88,7 +88,7 @@ class PDFAgent(Agent, ABC):
         )
 
     @staticmethod
-    def bkg_scaler(x, y, bkg, qmin=1.55, qmax=1.65):
+    def bkg_scaler(x, y, bkg, qmin=1.45, qmax=1.65):
         fgd_sum = np.sum(y[(x > qmin) & (x < qmax)])
         bgd_sum = np.sum(bkg["chi_I"][(bkg["chi_Q"] > qmin) & (bkg["chi_Q"] < qmax)])
         return fgd_sum / bgd_sum
