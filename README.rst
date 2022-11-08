@@ -41,6 +41,14 @@ BMM
 - Cu detector position for xafs_det is 205.
 - The Ti rich side is in the negative direction
 
+=========
+PDF - Nov
+=========
+Whole wafer
+sample_origin=(105, 88.7),
+relative_bounds=(-68, 0),
+
+
 
 
 Setting up Tiled Access
