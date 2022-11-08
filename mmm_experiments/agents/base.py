@@ -74,7 +74,11 @@ class Agent(ABC):
             beamline_tla=beamline_tla,
             bluesky_callbacks=(self._on_stop_router,),
         )
-        self.kafka_producer = Publisher(topic=f"{beamline_tla}.mmm.bluesky.adjudicators")
+        self.kafka_producer = Publisher(
+            topic=f"{beamline_tla}.mmm.bluesky.adjudicators",
+            bootstrap_servers=",".join(self.kafka_config["bootstrap_servers"]),
+            key="",
+        )
         logging.debug("Kafka setup sucessfully.")
         self.exp_catalog = (
             from_profile("pdf_bluesky_sandbox") if beamline_tla == "pdf" else from_profile(beamline_tla)
@@ -376,7 +380,9 @@ class Agent(ABC):
             for point in next_points
         ]
         msg = AdjudicatorMsg(
-            agent_name=self.agent_name, suggestions_uid=str(uuid.uuid4()), suggestions={self.beamline_tla: suggestions}
+            agent_name=self.agent_name,
+            suggestions_uid=str(uuid.uuid4()),
+            suggestions={self.beamline_tla: suggestions},
         )
         self.kafka_producer(ADJUDICATOR_STREAM_NAME, msg.dict())
 
