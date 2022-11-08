@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -10,16 +10,11 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 from scipy.spatial import distance_matrix
 
 
-def next_closest_raster_scan_point(
-    proposed_points,
-    observed_points,
-    possible_coordinates,
-    eps=1e-8
-):
+def next_closest_raster_scan_point(proposed_points, observed_points, possible_coordinates, eps=1e-8):
     """A helper function which determines the closest grid point for every
     proposed points, under the constraint that the proposed point is not
     present in the currently observed points, given possible coordinates.
-    
+
     Parameters
     ----------
     proposed_points : array_like
@@ -68,13 +63,7 @@ def next_closest_raster_scan_point(
     return np.array(actual_points)
 
 
-def scientific_value_function(
-    X,
-    Y,
-    sd=None,
-    multiplier=1.0,
-    y_distance_function=None
-):
+def scientific_value_function(X, Y, sd=None, multiplier=1.0, y_distance_function=None):
     """The value of two datasets, X and Y. Both X and Y must have the same
     number of rows. The returned result is a value of value for each of the
     data points.
@@ -140,9 +129,7 @@ class ScientificValueAgentMixin:
         device: Union[torch.device, str],
         length_scale: Optional[float] = None,
         y_distance_function: Optional[callable] = None,
-        optimize_acqf_kwargs: dict = {
-            "q": 1, "num_restarts": 5, "raw_samples": 20
-        },
+        optimize_acqf_kwargs: Optional[dict] = None,
         possible_coordinates: Optional[np.ndarray] = None,
         **kwargs
     ):
@@ -150,7 +137,9 @@ class ScientificValueAgentMixin:
         self.device = device
         self._length_scale = length_scale
         self._y_distance_function = y_distance_function
-        self._optimize_acqf_kwargs = optimize_acqf_kwargs
+        self._optimize_acqf_kwargs = self.default_acqf_kwargs().update(
+            {} if optimize_acqf_kwargs is None else optimize_acqf_kwargs
+        )
 
         # Possible coordinatse should be an array of shape L x d, where L is
         # the number of possible coordinates and d is the dimension of the
@@ -162,6 +151,10 @@ class ScientificValueAgentMixin:
         self._positions_cache = []
         self._relative_positions_cache = []
         self._value_cache = []
+
+    @staticmethod
+    def default_acqf_kwargs():
+        return {"q": 1, "num_restarts": 5, "raw_samples": 20}
 
     def tell(self, position, observation):
         """Takes the position of the motor and an arbitrary observation which
@@ -202,17 +195,15 @@ class ScientificValueAgentMixin:
             rel_position=[relative_position],
             observation=[observation],
             cache_len=[len(self._relative_positions_cache)],
-            value=[V.squeeze()[-1]]
+            value=[V.squeeze()[-1]],
         )
 
     def ask(self, optimize_acqf_kwargs=None):
 
-        train_x = torch.tensor(
-            self._relative_positions_cache, dtype=torch.float
-        )
-        train_x = train_x.to(self._device)
+        train_x = torch.tensor(self._relative_positions_cache, dtype=torch.float)
+        train_x = train_x.to(self.device)
         train_y = torch.tensor(self._observations_cache, dtype=torch.float)
-        train_y = train_y.to(self._device)
+        train_y = train_y.to(self.device)
 
         gp = SingleTaskGP(train_x, train_y).to(self.device)
         mll = ExactMarginalLogLikelihood(gp.likelihood, gp).to(self.device)
@@ -234,10 +225,7 @@ class ScientificValueAgentMixin:
 
         if self._possible_coordinates is not None:
             next_points = next_closest_raster_scan_point(
-                next_points,
-                train_x.detach().numpy(),
-                self._possible_coordinates,
-                eps=1e-8
+                next_points, train_x.detach().numpy(), self._possible_coordinates, eps=1e-8
             )
 
         if optimize_acqf_kwargs["q"] == 1:
