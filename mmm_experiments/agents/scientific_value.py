@@ -156,10 +156,12 @@ class ScientificValueAgentMixin:
     def default_acqf_kwargs():
         return {"q": 1, "num_restarts": 5, "raw_samples": 20}
 
+    def _value_function(self, X, Y):
+        return scientific_value_function(X, Y, sd=self._length_scale)
+
     def tell(self, position, observation):
         """Takes the position of the motor and an arbitrary observation which
-        is a function of that position, computes the value of this site, and
-        appends the proper caches.
+        is a function of that position, and appends the proper caches.
 
         Parameters
         ----------
@@ -182,20 +184,23 @@ class ScientificValueAgentMixin:
         self._relative_positions_cache.append(relative_position)
         self._observations_cache.append(observation)
 
-        # Compute the value
-        X = np.array(self._relative_positions_cache)
-        Y = np.array(self._observations_cache)
-        V = scientific_value_function(X, Y, sd=self._length_scale)
-
-        # The value is a scalar
-        V = V.reshape(-1, 1)
-
         return dict(
             position=[position],
             rel_position=[relative_position],
             observation=[observation],
             cache_len=[len(self._relative_positions_cache)],
-            value=[V.squeeze()[-1]],
+        )
+
+    def report(self):
+        # The value is a scalar
+        value = self._value_function(np.array(self._relative_positions_cache), np.array(self._observations_cache))
+        value = value.reshape(-1, 1)
+        return dict(
+            position=[self._positions_cache],
+            rel_position=[self._relative_positions_cache],
+            observation=[self._observations_cache],
+            cache_len=[len(self._relative_positions_cache)],
+            value=[value.squeeze()],
         )
 
     def ask(self, optimize_acqf_kwargs=None):
