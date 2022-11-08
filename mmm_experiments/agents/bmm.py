@@ -35,6 +35,86 @@ class DrowsyBMMAgent(DrowsyAgent):
         super().__init__(beamline_tla="bmm")
 
 
+class BMMSingleEdgeAgent(Agent, ABC):
+    """
+    Abstract Agent containing communication and data defaults for BMM
+    While the BMM experiment will measure a single fixed edge.
+    This agent currently hard coded to focus on Ti.
+    """
+
+    server_host = "https://qserver.nsls2.bnl.gov/bmm"
+    measurement_plan_name = "agent_measure_single_edge"
+    api_key = "zzzzz"
+    sample_position_motors = ("xafs_x", "xafs_y")
+
+    def __init__(
+        self,
+        *,
+        origin: Tuple[float, float],
+        relative_bounds: Tuple[float, float],
+        metadata: Optional[dict] = None,
+        **kwargs,
+    ):
+        super().__init__(beamline_tla="bmm", metadata=metadata, **kwargs)
+        self.origin = origin
+        self._relative_bounds = relative_bounds
+
+    def measurement_plan_args(self, point):
+        """List of arguments to pass to plan.
+        BMM agents are relative to Cu origin, but separate origins are needed for other element edges."""
+        return (
+            self.sample_position_motors[0],
+            self.origin[0] + point,
+            self.sample_position_motors[1],
+            self.origin[1],
+        )
+
+    def measurement_plan_kwargs(self, point) -> dict:
+        return dict(
+            filename="MultimodalMadnessElectionDay",
+            nscans=1,
+            start="next",
+            mode="fluorescence",
+            edge="L3",
+            element="Pt",
+            sample="PtZr",
+            preparation="film sputtered on silica",
+            bounds="-200 -30 -10 25 13k",
+            steps="10 2 0.3 0.05k",
+            times="0.5 0.5 0.5 0.5",
+            snapshots=False,
+            md={"relative_position": point},
+        )
+
+    @staticmethod
+    def unpack_run(run: databroker.client.BlueskyRun):
+        """Gets Chi(k) and absolute position"""
+        run_preprocessor = Pandrosus()
+        run_preprocessor.fetch(run, mode="fluorescence")
+        # x_data = run_preprocessor.group.k
+        y_data = run_preprocessor.group.chi
+        md = ast.literal_eval(run.start["XDI"]["_comment"][0])
+        return md["x_position"], y_data
+
+    def trigger_condition(self, uid) -> bool:
+        return (
+            "XDI" in self.exp_catalog[uid].start
+            and self.exp_catalog[uid].start["plan_name"].startswith("scan_nd")
+            and self.exp_catalog[uid].start["XDI"]["Element"]["symbol"] == "Pt"
+        )
+
+    @property
+    def measurement_origin(self):
+        return self.origin[0]
+
+    @property
+    def relative_bounds(self):
+        return self._relative_bounds
+
+    def report(self):
+        pass
+
+
 class BMMAgent(Agent, ABC):
     """
     Abstract Agent containing communication and data defaults for BMM
@@ -143,7 +223,7 @@ class BMMAgent(Agent, ABC):
         pass
 
 
-class SequentialAgent(SequentialAgentMixin, BMMAgent):
+class SequentialAgent(SequentialAgentMixin, BMMSingleEdgeAgent):
     """
     Hears a stop document and immediately suggests the nearest neighbor
     Parameters
@@ -158,14 +238,14 @@ class SequentialAgent(SequentialAgentMixin, BMMAgent):
         super().__init__(step_size=step_size, **kwargs)
 
 
-class RandomAgent(RandomAgentMixin, BMMAgent):
+class RandomAgent(RandomAgentMixin, BMMSingleEdgeAgent):
     """
     Hears a stop document and immediately suggests a random point within the bounds.
     Uses the same signature as SequentialAgent.
     """
 
 
-class GeometricAgent(GeometricResolutionMixin, BMMAgent):
+class GeometricAgent(GeometricResolutionMixin, BMMSingleEdgeAgent):
     """Geometric series for exploration at BMM"""
 
 

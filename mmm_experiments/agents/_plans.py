@@ -138,6 +138,49 @@ xafs_det = ...
 slits3 = ...
 
 
+def agent_measure_single_edge(motor_x, x_position, motor_y, y_position, *, md=None, **kwargs):
+    """
+    A complete XAFS measurement for a single edge.
+    The element edge must have its own calibrated motor positioning and detector distance.
+    The sample is moved into position, and spectra taken. The edge is assumed to be set.
+
+    Parameters
+    ----------
+    motor_x : str
+        Positional motor for sample in x.
+    x_position : float
+        Absolute x motor position for sample measurement (This is the real independent variable)
+    motor_y : str
+        Positional motor for sample in y.
+    y_position : float
+        Absolute y motor position for sample measurement
+    md : Optional[dict]
+        Metadata
+    kwargs :
+        All keyword arguments for the xafs plan. Must include  'filename'. Eg below:
+            >>> {'filename': 'Cu_PdCuCr_112421_001',
+            >>> 'nscans': 1,
+            >>> 'start': 'next',
+            >>> 'mode': 'fluorescence',
+            >>> 'element': 'Cu',
+            >>> 'edge': 'K',
+            >>> 'sample': 'PdCuCr',
+            >>> 'preparation': 'film deposited on something',
+            >>> 'comment': 'index = 1, position (x,y) = (-9.04, -31.64), center at (236.98807533, 80.98291381)',
+            >>> 'bounds': '-200 -30 -10 25 12k',
+            >>> 'steps': '10 2 0.3 0.05k',
+            >>> 'times': '0.5 0.5 0.5 0.5'}
+    """
+    # rkvs = redis.Redis(host="xf06bm-ioc2", port=6379, db=0)
+    # element = rkvs.get("BMM:pds:element").decode("utf-8")
+    yield from bps.mv(motor_x, x_position)
+    _md = dict(x_position=motor_x.position)
+    yield from bps.mv(motor_y, y_position)
+    _md["det_position"] = xafs_det.position
+    _md.update(md or {})
+    yield from xafs(element="Pt", comment=str(_md), **kwargs)
+
+
 def agent_move_and_measure(
     motor_x,
     Cu_x_position,
