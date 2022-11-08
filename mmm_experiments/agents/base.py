@@ -607,6 +607,10 @@ class GeometricResolutionMixin(SequentialAgentMixin):
             self.re_manager.queue_start()
             logging.info("Agent is starting an idle queue.")
 
+    @property
+    def name(self):
+        return "geometric"
+
 
 class RandomAgentMixin:
     """
@@ -621,6 +625,10 @@ class RandomAgentMixin:
         point = np.random.uniform(*self.relative_bounds)
         doc = dict(next_point=[point])
         return doc, [point]
+
+    @property
+    def name(self):
+        return "random"
 
 
 class DrowsyAgent(Agent, ABC):
@@ -667,3 +675,7 @@ class DrowsyAgent(Agent, ABC):
 
     def relative_bounds(self):
         pass
+
+    @property
+    def name(self):
+        return "drowsy"
