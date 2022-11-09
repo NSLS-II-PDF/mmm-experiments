@@ -361,6 +361,7 @@ class Agent(ABC):
         """Add event to builder as event page, and publish to catalog"""
         uid = str(uuid.uuid4())
         if not doc:
+            logging.info(f"No doc presented to write_event for stream {stream}")
             return
         if stream in self.builder._streams:
             self.builder.add_data(stream, data=doc)
