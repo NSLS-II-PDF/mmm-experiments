@@ -65,6 +65,7 @@ class PDFAgent(Agent, ABC):
         self._relative_bounds = relative_bounds
         self.xrd_background = self.get_wafer_background("xrd")
         self.pdf_background = self.get_wafer_background("pdf")
+        self._sample_number = 0
 
     @property
     def measurement_origin(self):
@@ -73,6 +74,13 @@ class PDFAgent(Agent, ABC):
     @property
     def relative_bounds(self):
         return self._relative_bounds
+
+    @property
+    def sample_number(self):
+        return self._sample_number
+
+    def set_sample_number(self, sample_number: int):
+        self._sample_number = sample_number
 
     def measurement_plan_args(self, x_position) -> list:
         """Plan to be writen than moves to an x_position then jogs up and down relatively in y"""
