@@ -406,7 +406,6 @@ class Agent(ABC):
 
     def generate_report(self, **kwargs):
         doc = self.report(**kwargs)
-        print(doc)
         uid = self._write_event("report", doc)
         logging.info(f"Issued report request and writing to Mongo. {uid}")
 
