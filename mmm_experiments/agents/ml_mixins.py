@@ -360,8 +360,8 @@ class XCAValueMixin(XCAMixin):
         value = scientific_value_function(
             np.array(self.independent_cache).reshape(-1, 1), np.stack(self.latent_cache)
         )
-        doc["value"] = value.squeeze()
-        doc["cache_len"] = len(self.independent_cache)
+        doc["value"] = [value.squeeze()]
+        doc["cache_len"] = [len(self.independent_cache)]
         return doc
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
