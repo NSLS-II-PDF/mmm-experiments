@@ -6,6 +6,7 @@ from typing import Literal, Optional, Tuple, Union
 import numpy as np
 import xarray
 from databroker.client import BlueskyRun
+from scipy.interpolate import interp1d
 from tiled.client import from_profile
 
 from .base import (
@@ -128,8 +129,10 @@ class PDFAgent(Agent, ABC):
             background = self.xrd_background
         else:
             background = self.pdf_background
-        scaler = self.bkg_scaler(x, y, background)
-        y = np.array(y) - float(scaler) * np.array(background["chi_I"])
+        f = interp1d(x, y, fill_value=0.0, bounds_error=False)
+        y = f(background["chi_Q"])
+        scaler = self.bkg_scaler(background["chi_Q"], y, background)
+        y = y - float(scaler) * np.array(background["chi_I"])
         y = (y - y.min()) / (y.max() - y.min())
         return run.start["Grid_X"]["Grid_X"]["value"], y
 

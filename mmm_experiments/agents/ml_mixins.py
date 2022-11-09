@@ -278,8 +278,8 @@ class XCAMixin:
         Overrides standard unpack run to extract extra metadata
         and interpolates intensity onto the standard Q space.
         """
-        x = np.array(run.primary.data["chi_Q"][0])
-        y = np.array(run.primary.data["chi_I"][0])
+        position, y = super().unpack_run(run)
+        x = self.xrd_background["chi_Q"]
         f = interp1d(x, y, fill_value=0.0, bounds_error=False)
         spectra = f(self.q_space)
         spectra = (spectra - np.min(spectra)) / (np.max(spectra) - np.min(spectra))
