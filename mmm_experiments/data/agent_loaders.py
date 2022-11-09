@@ -95,7 +95,6 @@ def get_list_of_documents(run):
     reports = []
 
     def _callback(name, doc):
-        nonlocal latest
         if name == "descriptor":
             descriptor_cache[doc["uid"]] = doc["name"]
         if name == "event":
