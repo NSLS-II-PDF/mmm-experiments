@@ -6,7 +6,6 @@ from typing import Literal, Optional, Tuple, Union
 import numpy as np
 import xarray
 from databroker.client import BlueskyRun
-from scientific_value import ScientificValueAgentMixin
 from tiled.client import from_profile
 
 from .base import (
@@ -17,6 +16,7 @@ from .base import (
     SequentialAgentMixin,
 )
 from .ml_mixins import CMFMixin, XCAMixin, XCAValueMixin
+from .scientific_value import ScientificValueAgentMixin
 
 Representation = namedtuple("Representation", "probabilities shannon_entropy reconstruction_loss")
 
