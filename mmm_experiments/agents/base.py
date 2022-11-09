@@ -390,12 +390,10 @@ class Agent(ABC):
         self._add_to_queue(next_points, uid)
         self._check_queue_and_start()
 
-    def generate_suggestions_for_adjudicator(self, batch_size: int):
-        doc, next_points = self.ask(batch_size)
-        uid = self._write_event("ask", doc)
-        logging.info(f"Issued ask and sending to adjudicator. {uid}")
+    def _create_suggestion_list(self, points, uid):
+        """Create suggestions for adjudicator"""
         suggestions = []
-        for point in next_points:
+        for point in points:
             kwargs = self.measurement_plan_kwargs(point)
             kwargs.setdefault("md", {})
             kwargs["md"].update(self.default_plan_md)
@@ -409,6 +407,13 @@ class Agent(ABC):
                     plan_kwargs=kwargs,
                 )
             )
+        return suggestions
+
+    def generate_suggestions_for_adjudicator(self, batch_size: int):
+        doc, next_points = self.ask(batch_size)
+        uid = self._write_event("ask", doc)
+        logging.info(f"Issued ask and sending to adjudicator. {uid}")
+        suggestions = self._create_suggestion_list(next_points, uid)
         msg = AdjudicatorMsg(
             agent_name=self.agent_name,
             suggestions_uid=str(uuid.uuid4()),

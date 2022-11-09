@@ -1,6 +1,8 @@
 import logging
 import time
+import uuid
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from typing import Tuple
 
 import numpy as np
@@ -10,9 +12,16 @@ from bluesky_queueserver_api.http import REManagerAPI
 from sklearn.cluster import KMeans
 from sklearn.decomposition import NMF
 
-from .base import GeometricResolutionMixin, SequentialAgentMixin
-from .bmm import BMMAgent
+from mmm_experiments.adjudicators.msg import DEFAULT_NAME as ADJUDICATOR_STREAM_NAME
+from mmm_experiments.adjudicators.msg import AdjudicatorMsg
+
+from .base import Agent, GeometricResolutionMixin, SequentialAgentMixin
+from .bmm import BMMAgent, BMMSingleEdgeAgent
+from .ml_mixins import XCAValueMixin
 from .pdf import PDFAgent
+from .scientific_value import ScientificValueAgentMixin
+
+logger = logging.getLogger(name="mmm.joint")
 
 
 class MonarchSubjectBase(ABC):
@@ -266,3 +275,94 @@ class SequentialMonarchPDF(SequentialAgentMixin, MonarchSubjectBase, PDFAgent):
             r = self.subject_manager.item_add(plan, pos="front")
             logging.info(f"Sent BMM http-server priority request for point {point}\n." f"Received reponse: {r}")
         return doc, points
+
+
+class MonarchBase(Agent, ABC):
+    def __init__(self, *, subjects, direct_subjects_on_tell=False, **kwargs):
+        """
+        PDF Agent that apporaches joint behavior using composition instead of inheritence.
+        The subjects are initialized agents that are subsequently muted.
+
+        When the Monarch is triggered, it will publish new suggestions to all of its subjects
+        either via adjudicator or directly to queue.
+        The Monarch never writes to it's own queue. It
+
+        Parameters
+        ----------
+        subjects : Iterable[Agent]
+        kwargs
+        """
+        super().__init__(**kwargs)
+        self.subjects = [subject for subject in subjects]
+        self._subject_ask_on_tell = direct_subjects_on_tell
+        for agent in self.subjects:
+            agent.disable_continuous_reporting()
+            agent.disable_continuous_suggesting()
+            agent.kafka_consumer = None
+
+    def add_suggestions_to_subject_queues(self, batch_size: int):
+        doc, next_points = self.ask(batch_size)
+        uid = self._write_event("subject_ask", doc)
+        for agent in self.subjects:
+            logger.info(
+                f"Adding suggestion to all the subject queue: {agent.agent_name} "
+                f"from monarch {self.agent_name}"
+            )
+            agent._add_to_queue(next_points, uid)
+            agent._check_queue_and_start()
+
+    def generate_subject_suggestions_for_adjudicator(self, batch_size: int):
+        doc, next_points = self.ask(batch_size)
+        uid = self._write_event("subject_ask", doc)
+        suggestions = defaultdict(list)
+        for agent in self.subjects:
+            logger.info(f"Sending suggestion to kafka for: {agent.agent_name} " f"from monarch {self.agent_name}")
+            agent_suggestions = agent._create_suggestion_list(next_points, uid)
+            suggestions[agent.beamline_tla].extend(agent_suggestions)
+        msg = AdjudicatorMsg(
+            agent_name=self.agent_name, suggestions_uid=str(uuid.uuid4()), suggestions=suggestions
+        )
+        self.kafka_producer(ADJUDICATOR_STREAM_NAME, msg.dict())
+
+    def _on_stop_router(self, name, doc):
+        super()._on_stop_router(name, doc)
+        if name == "stop" and self.trigger_condition(doc["run_start"]):  # Conditions for tell in super().
+            if self._subject_ask_on_tell:
+                logger.info(f"Generating new points on tell for all subjects or {self.agent_name}")
+                doc, next_points = self.ask(1)
+                uid = self._write_event("subject_ask", doc)
+                for agent in self.subjects:
+                    if agent._direct_to_queue:
+                        logger.info(
+                            f"Adding suggestion to all the subject queue: {agent.agent_name} "
+                            f"from monarch {self.agent_name}"
+                        )
+                        agent._add_to_queue(next_points, uid)
+                        agent._check_queue_and_start()
+                    else:
+                        logger.info(
+                            f"Sending suggestion to kafka for: {agent.agent_name} "
+                            f"from monarch {self.agent_name}"
+                        )
+                        agent_suggestions = agent._create_suggestion_list(next_points, uid)
+                        suggestions = {agent.beamline_tla: agent_suggestions}
+                        msg = AdjudicatorMsg(
+                            agent_name=self.agent_name, suggestions_uid=str(uuid.uuid4()), suggestions=suggestions
+                        )
+                        self.kafka_producer(ADJUDICATOR_STREAM_NAME, msg.dict())
+
+
+class PDFMonarch(MonarchBase, PDFAgent, ABC):
+    ...
+
+
+class BMMMonarch(MonarchBase, BMMSingleEdgeAgent, ABC):
+    ...
+
+
+class BMMSVAMonarch(ScientificValueAgentMixin, BMMMonarch):
+    ...
+
+
+class PDFXCAMonarch(XCAValueMixin, PDFMonarch):
+    ...

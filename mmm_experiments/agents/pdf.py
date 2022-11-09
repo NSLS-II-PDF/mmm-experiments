@@ -252,4 +252,4 @@ class XCAActiveAgent(XCAValueMixin, PDFAgent):
 
 
 class ScientificValue(ScientificValueAgentMixin, PDFAgent):
-    """Scientific value agent for BMM"""
+    """Scientific value agent for PDF"""
