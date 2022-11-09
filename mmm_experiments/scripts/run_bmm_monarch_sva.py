@@ -31,6 +31,7 @@ if __name__ == "__main__":
         agent = BMMSVAMonarch(
             subjects=[subject_agent],
             direct_subjects_on_tell=True,
+            exp_filename="MultimodalMadness-SVAMonarch-Testing",
             device="cuda:1",
             origin=(183.818, 122.319),
             relative_bounds=(-28, 37),
