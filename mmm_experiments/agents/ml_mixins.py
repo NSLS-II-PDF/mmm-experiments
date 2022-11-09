@@ -143,7 +143,7 @@ class CMFMixin:
             logger.warning(f"Unrecognized CMF mode {self.ask_mode}. I don't know how you got here...")
         points = []
         batch_size = batch_size or self.num_components
-        for i, component in enumerate(self.current_components.T):
+        for i, component in enumerate(self.current_components):
             if i == batch_size:
                 break
             points.append(self.sorted_positions[(self.sorted_dataset - component).sum(axis=-1).argmin()])
