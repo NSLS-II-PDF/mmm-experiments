@@ -133,13 +133,14 @@ class AdjudicatorBase(BlueskyConsumer, ABC):
         logger.debug(f"Sent http-server request by adjudicator\n." f"Received reponse: {r}")
 
 
-class AgentByModeAdjudicator(AdjudicatorBase, ABC):
+class AgentByModeAdjudicator(AdjudicatorBase):
     def make_judgements(self, value):
         agent_name = self._switchboard.adjudicate_mode.get()
-        if agent_name not in self.agent_names:
+        try:
+            adjudicator_msg = self.current_suggestions[agent_name]
+        except KeyError:
             logger.warning(f"Agent {agent_name} not known to the Adjudicator")
         else:
-            adjudicator_msg = self.current_suggestions[agent_name]
             for suggestion in adjudicator_msg.suggestions[self._tla]:
                 self._add_suggestion_to_queue(agent_name, suggestion)
 
