@@ -243,7 +243,7 @@ class XCAMixin:
         self.vae = VAE(self.encoder, self.decoder)
         self.pl_module = JointVAEClassifierModule.load_from_checkpoint(
             model_checkpoint, classification_model=self.cnn, vae_model=self.vae
-        )
+        ).to(self.device)
         self.pl_module.eval()
         self.recon_loss = torch.nn.MSELoss(reduction="none")
 
