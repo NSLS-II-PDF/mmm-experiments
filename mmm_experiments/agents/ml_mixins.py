@@ -1,5 +1,6 @@
 import logging
 import pickle
+import time
 from pathlib import Path
 from typing import Literal, Optional, Sequence, Tuple, Union
 
@@ -171,6 +172,8 @@ class CMFMixin:
         )
         if self.lustre_path:
             with open(Path(self.lustre_path) / f"{self.agent_name}-agent.pkl", "wb") as f:
+                pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
+            with open(Path(self.lustre_path) / f"{self.agent_name}-agent-{time.time()}.pkl", "wb") as f:
                 pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
         return doc, points
 
@@ -424,5 +427,7 @@ class XCAValueMixin(XCAMixin):
         )
         if self.lustre_path:
             with open(Path(self.lustre_path) / f"{self.agent_name}-agent.pkl", "wb") as f:
+                pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
+            with open(Path(self.lustre_path) / f"{self.agent_name}-agent-{time.time()}.pkl", "wb") as f:
                 pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
         return doc, next_points
