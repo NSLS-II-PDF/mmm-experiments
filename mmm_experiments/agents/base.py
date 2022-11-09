@@ -372,14 +372,14 @@ class Agent(ABC):
 
     def add_suggestions_to_queue(self, batch_size: int):
         """Calls ask, adds suggestions to queue, and writes out event"""
-        logging.debug("Issuing ask and adding to the queue.")
+        logging.info("Issuing ask and adding to the queue.")
         doc, next_points = self.ask(batch_size)
         uid = self._write_event("ask", doc)
         self._add_to_queue(next_points, uid)
         self._check_queue_and_start()
 
     def generate_suggestions_for_adjudicator(self, batch_size: int):
-        logging.debug("Issuing ask and sending to adjudicator.")
+        logging.info("Issuing ask and sending to adjudicator.")
         doc, next_points = self.ask(batch_size)
         uid = self._write_event("ask", doc)
         suggestions = []
@@ -404,7 +404,7 @@ class Agent(ABC):
         self.kafka_producer(ADJUDICATOR_STREAM_NAME, msg.dict())
 
     def generate_report(self, **kwargs):
-        logging.debug("Issuing report request and writing to Mongo.")
+        logging.info("Issuing report request and writing to Mongo.")
         doc = self.report(**kwargs)
         self._write_event("report", doc)
 
@@ -423,10 +423,7 @@ class Agent(ABC):
                 )
                 return
 
-            logging.info(
-                f"New data detected, telling the agent about this start doc "
-                f"and asking for a new suggestion: {uid}"
-            )
+            logging.info(f"New data detected, telling the agent about this start doc: {uid}")
             run = self.exp_catalog[uid]
             try:
                 independent_variable, dependent_variable = self.unpack_run(run)
