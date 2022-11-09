@@ -139,9 +139,8 @@ class ScientificValueAgentMixin:
         self.device = device
         self._length_scale = length_scale
         self._y_distance_function = y_distance_function
-        self._optimize_acqf_kwargs = self.default_acqf_kwargs().update(
-            {} if optimize_acqf_kwargs is None else optimize_acqf_kwargs
-        )
+        self._optimize_acqf_kwargs = self.default_acqf_kwargs()
+        self._optimize_acqf_kwargs.update({} if optimize_acqf_kwargs is None else optimize_acqf_kwargs)
 
         # Possible coordinatse should be an array of shape L x d, where L is
         # the number of possible coordinates and d is the dimension of the
