@@ -511,6 +511,7 @@ class Agent(ABC):
         logging.debug("Attempting agent stop.")
         self.builder.close(exit_status=exit_status, reason=reason)
         self.agent_catalog.v1.insert("stop", self.builder._cache.stop_doc)
+        self.kafka_producer.flush()
         self.kafka_consumer.stop()
         logging.info(
             f"Stopped agent with exit status {exit_status.upper()}"
