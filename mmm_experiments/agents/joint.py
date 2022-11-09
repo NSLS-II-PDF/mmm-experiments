@@ -361,6 +361,10 @@ class BMMMonarch(MonarchBase, BMMSingleEdgeAgent, ABC):
 
 
 class BMMSVAMonarch(ScientificValueAgentMixin, BMMMonarch):
+    @property
+    def name(self) -> str:
+        return "sci_value_monarch"
+
     ...
 
 
