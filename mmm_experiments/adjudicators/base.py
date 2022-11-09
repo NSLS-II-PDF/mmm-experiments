@@ -124,7 +124,7 @@ class AdjudicatorBase(BlueskyConsumer, ABC):
             return
         else:
             self._uid_deque_set.append(suggestion.ask_uid)
-        kwargs = suggestion.plan_kwargs
+        kwargs = dict(suggestion.plan_kwargs)
         kwargs.setdefault("md", {})
         kwargs["md"]["agent_ask_uid"] = suggestion.ask_uid
         kwargs["md"]["agent_name"] = agent_name
