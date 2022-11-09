@@ -171,9 +171,9 @@ class CMFMixin:
             suggestions=[points],
         )
         if self.lustre_path:
-            with open(Path(self.lustre_path) / f"{self.agent_name}-agent.pkl", "wb") as f:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-ask.pkl", "wb") as f:
                 pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
-            with open(Path(self.lustre_path) / f"{self.agent_name}-agent-{time.time()}.pkl", "wb") as f:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-ask-{time.time()}.pkl", "wb") as f:
                 pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
         return doc, points
 
@@ -338,7 +338,7 @@ class XCAMixin:
             shannon_entropy=[self.shannon_cache],  # List[float]
         )
         if self.lustre_path:
-            with open(Path(self.lustre_path) / f"{self.agent_name}-agent.pkl", "wb") as f:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-report.pkl", "wb") as f:
                 pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
         return doc
 
@@ -426,8 +426,8 @@ class XCAValueMixin(XCAMixin):
             acq_value=[acq_value],
         )
         if self.lustre_path:
-            with open(Path(self.lustre_path) / f"{self.agent_name}-agent.pkl", "wb") as f:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-ask.pkl", "wb") as f:
                 pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
-            with open(Path(self.lustre_path) / f"{self.agent_name}-agent-{time.time()}.pkl", "wb") as f:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-ask-{time.time()}.pkl", "wb") as f:
                 pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
         return doc, next_points
