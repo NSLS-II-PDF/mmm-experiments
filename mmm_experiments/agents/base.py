@@ -141,6 +141,16 @@ class Agent(ABC):
         """Relative measurement bounds to consider for the experiment"""
         ...
 
+    @abstractmethod
+    def get_relative_position(self, absolute_position):
+        """Return relative position from absolute position"""
+        ...
+
+    @abstractmethod
+    def get_absolute_position(self, relative_position):
+        """Return absolute position from relative position"""
+        ...
+
     @property
     @abstractmethod
     def measurement_plan_name(self) -> str:
@@ -534,7 +544,7 @@ class SequentialAgentMixin:
         self.independent_cache = []
 
     def tell(self, position, y) -> dict:
-        relative_position = position - self.measurement_origin
+        relative_position = self.get_relative_position(position)
         self.independent_cache.append(relative_position)
         return dict(position=[position], rel_position=[relative_position], cache_len=[len(self.independent_cache)])
 

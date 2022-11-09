@@ -61,12 +61,19 @@ class BMMSingleEdgeAgent(Agent, ABC):
     def set_filename(self, filename: str):
         self._exp_filename = filename
 
+    def get_relative_position(self, absolute_position):
+        """Sample inverted w.r.t. PDF"""
+        return self.origin[0] - absolute_position
+
+    def get_absolute_position(self, relative_position):
+        return self.origin[0] - relative_position
+
     def measurement_plan_args(self, point):
         """List of arguments to pass to plan.
         BMM agents are relative to Cu origin, but separate origins are needed for other element edges."""
         return (
             self.sample_position_motors[0],
-            self.origin[0] - point,
+            self.get_absolute_position(point),
             self.sample_position_motors[1],
             self.origin[1],
         )

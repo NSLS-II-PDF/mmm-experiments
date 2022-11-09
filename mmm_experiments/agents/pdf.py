@@ -75,6 +75,13 @@ class PDFAgent(Agent, ABC):
     def relative_bounds(self):
         return self._relative_bounds
 
+    def get_relative_position(self, absolute_position):
+        """Sample inverted w.r.t. PDF"""
+        return absolute_position - self.measurement_origin
+
+    def get_absolute_position(self, relative_position):
+        return self.measurement_origin + relative_position
+
     @property
     def sample_number(self):
         return self._sample_number
@@ -84,7 +91,7 @@ class PDFAgent(Agent, ABC):
 
     def measurement_plan_args(self, x_position) -> list:
         """Plan to be writen than moves to an x_position then jogs up and down relatively in y"""
-        return ["Grid_X", x_position + self.measurement_origin, 30]
+        return ["Grid_X", self.get_absolute_position(x_position), 30]
 
     def measurement_plan_kwargs(self, point) -> dict:
         md = {"relative_position": point}
