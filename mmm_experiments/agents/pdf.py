@@ -97,7 +97,12 @@ class PDFAgent(Agent, ABC):
 
     def measurement_plan_kwargs(self, point) -> dict:
         md = {"relative_position": point}
-        return {"sample_number": self.sample_number, "md": md}
+        user_config = {
+            "auto_mask": True,
+            "user_mask": "/nsls2/data/pdf/legacy/processed/xpdacq_data/user_data/my_mask_xrd.npy",
+            "method": "splitpixel",
+        }
+        return {"sample_number": self.sample_number, "user_config": user_config, "md": md}
 
     def get_wafer_background(self, mode="pdf"):
         ignore_uids = [
