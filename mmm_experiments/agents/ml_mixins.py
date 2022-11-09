@@ -1,4 +1,5 @@
 import logging
+import pickle
 from pathlib import Path
 from typing import Literal, Optional, Sequence, Tuple, Union
 
@@ -24,7 +25,9 @@ logger = logging.getLogger(name="mmm.ml_mixins")
 class CMFMixin:
     AVAILABLE_ASK_MODES = {"autoconstrained", "unconstrained"}
 
-    def __init__(self, *, num_components: int, ask_mode: str, **kwargs):
+    def __init__(
+        self, *, num_components: int, ask_mode: str, lustre_path: Optional[Union[str, Path]] = None, **kwargs
+    ):
         """
         Constrained Matrix Factorization mixin for agents.base.Agent children
 
@@ -51,6 +54,7 @@ class CMFMixin:
         self.sorted_positions, self.sorted_dataset = None, None
         self._current_num_components = num_components
         self._ask_mode = ask_mode.lower() if ask_mode.lower() in self.AVAILABLE_ASK_MODES else "unconstrained"
+        self.lustre_path = lustre_path
 
     @property
     def name(self):
@@ -111,7 +115,7 @@ class CMFMixin:
             self._calculate_autoconstrained_nmf(**kwargs)
         else:
             self._calculate_nmf(**kwargs)
-        return dict(
+        doc = dict(
             num_components=[self.num_components],
             components=[self.current_components],
             weights=[self.current_weights],
@@ -119,6 +123,9 @@ class CMFMixin:
             sorted_dataset=[self.sorted_dataset],
             sorted_positions=[self.sorted_positions],
         )
+        if self.lustre_path:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-report.pkl", "wb") as f:
+                pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     @property
     def ask_mode(self):
@@ -162,6 +169,9 @@ class CMFMixin:
             batch_size=[batch_size],
             suggestions=[points],
         )
+        if self.lustre_path:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-agent.pkl", "wb") as f:
+                pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
         return doc, points
 
     @staticmethod
@@ -207,6 +217,7 @@ class XCAMixin:
         model_checkpoint: Union[str, Path],
         model_qspace: np.ndarray,
         device: Literal["cpu", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+        lustre_path: Optional[Union[str, Path]] = None,
         **kwargs,
     ):
         """
@@ -234,6 +245,7 @@ class XCAMixin:
         self.dependent_cache = []
         self.q_space = model_qspace
         self.device = torch.device(device)
+        self.lustre_path = lustre_path
         self.checkpoint = torch.load(str(model_checkpoint), map_location=self.device)
 
         # Load lightning module
@@ -308,7 +320,7 @@ class XCAMixin:
 
     def report(self, **kwargs):
         """Return document of all relevant caches for plotting. Expected shapes/types in comments."""
-        return dict(
+        doc = dict(
             absolute_positions=[
                 [self.get_absolute_position(pos) for pos in self.independent_cache]
             ],  # List[float]
@@ -322,6 +334,10 @@ class XCAMixin:
             reconstruction_losses=[self.loss_cache],  # List[float]
             shannon_entropy=[self.shannon_cache],  # List[float]
         )
+        if self.lustre_path:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-agent.pkl", "wb") as f:
+                pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
+        return doc
 
     def ask(self):
         raise NotImplementedError("Basic XCA Mixin is a passive agent.")
@@ -364,6 +380,9 @@ class XCAValueMixin(XCAMixin):
         )
         doc["value"] = [value.squeeze()]
         doc["cache_len"] = [len(self.independent_cache)]
+        if self.lustre_path:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-report.pkl", "wb") as f:
+                pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
         return doc
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
@@ -403,4 +422,7 @@ class XCAValueMixin(XCAMixin):
             next_points=[next_points],
             acq_value=[acq_value],
         )
+        if self.lustre_path:
+            with open(Path(self.lustre_path) / f"{self.agent_name}-agent.pkl", "wb") as f:
+                pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
         return doc, next_points

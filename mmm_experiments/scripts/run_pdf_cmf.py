@@ -17,6 +17,7 @@ if __name__ == "__main__":
             ask_on_tell=True,
             report_on_tell=True,
             direct_to_queue=False,
+            lustre_path="/nsls2/data/pdf/scratch/mmm_stuff",
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.start(ask_at_start=False)
