@@ -104,7 +104,7 @@ class CMFMixin:
     def _update_current(self, nmf, dataset):
         self.current_weights = nmf.W.data.cpu().numpy()
         self.current_components = nmf.H.data.cpu().numpy()
-        self.current_residuals = nmf.reconstruct(nmf.H, nmf.W).detach().cpu().numpy() - dataset
+        self.current_residuals = (nmf.reconstruct(nmf.H, nmf.W).detach() - dataset).cpu().numpy()
 
     def report(self, auto_constrained=False, **kwargs):
         if auto_constrained:
