@@ -126,8 +126,8 @@ class ScientificValueAgentMixin:
     def __init__(
         self,
         *,
-        beta=20.0,
         device: Union[torch.device, str],
+        beta=20.0,
         length_scale: Optional[float] = None,
         y_distance_function: Optional[callable] = None,
         optimize_acqf_kwargs: Optional[dict] = None,

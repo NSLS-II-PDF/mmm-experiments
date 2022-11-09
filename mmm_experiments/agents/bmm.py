@@ -12,6 +12,7 @@ from .base import (
     RandomAgentMixin,
     SequentialAgentMixin,
 )
+from .scientific_value import ScientificValueAgentMixin
 
 
 class DrowsyBMMAgent(DrowsyAgent):
@@ -239,3 +240,7 @@ class RandomAgent(RandomAgentMixin, BMMSingleEdgeAgent):
 
 class GeometricAgent(GeometricResolutionMixin, BMMSingleEdgeAgent):
     """Geometric series for exploration at BMM"""
+
+
+class ScientificValue(ScientificValueAgentMixin, BMMSingleEdgeAgent):
+    """Scientific value agent for BMM"""
