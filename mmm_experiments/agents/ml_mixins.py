@@ -368,7 +368,9 @@ class XCAValueMixin(XCAMixin):
         value = scientific_value_function(
             np.array(self.independent_cache).reshape(-1, 1), np.stack(self.latent_cache)
         ).reshape(-1, 1)
-        train_x = torch.tensor(np.array(self.independent_cache), dtype=torch.float, device=self.botorch_device)
+        train_x = torch.tensor(
+            np.array(self.independent_cache).reshape(-1, 1), dtype=torch.float, device=self.botorch_device
+        )
         train_y = torch.tensor(value, dtype=torch.float, device=self.botorch_device)
 
         gp = SingleTaskGP(train_x, train_y).to(self.botorch_device)
