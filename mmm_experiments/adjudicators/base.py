@@ -57,6 +57,7 @@ class AdjudicatorBase(BlueskyConsumer, ABC):
         self.re_manager.set_authorization_key(api_key=self.api_key)
         self._uid_deque_set = DequeSet()
 
+    
     def start(self, *args, **kwargs):
         self._callback_id = self._switchboard.publish_to_queue.subscribe(self.switchboard_callback)
         try:
@@ -64,7 +65,8 @@ class AdjudicatorBase(BlueskyConsumer, ABC):
         finally:
             self._switchboard.publish_to_queue.unsubscribe(self._callback_id)
 
-    def switchboard_callback(self, value):
+    # need kwargs because the caller passes a bunch of stuff in
+    def switchboard_callback(self, value, **kwargs):
         """Process to run when switch board signal is set to on."""
         if value == 0:
             return
@@ -140,7 +142,8 @@ class AgentByModeAdjudicator(AdjudicatorBase):
         try:
             adjudicator_msg = self.current_suggestions[agent_name]
         except KeyError:
-            logger.warning(f"Agent {agent_name} not known to the Adjudicator")
+            logger.warning(f"Agent {agent_name} not known to the Adjudicator. "
+            f"Known agenst are {list(self.current_suggestions)!r}")
         else:
             for suggestion in adjudicator_msg.suggestions[self._tla]:
                 self._add_suggestion_to_queue(agent_name, suggestion)
@@ -156,6 +159,7 @@ class NoisyButSafeAdjudicator(AgentByModeAdjudicator):
         else:
             self._uid_deque_set.append(suggestion.ask_uid)
         kwargs = dict(suggestion.plan_kwargs)
+        kwargs.setdefault('md', {})
         kwargs["md"]["agent_ask_uid"] = suggestion.ask_uid
         kwargs["md"]["agent_name"] = agent_name
         pprint.pprint((suggestion.plan_name, suggestion.plan_args, kwargs))
@@ -176,6 +180,9 @@ if __name__ == "__main__":
         topics=[f"{tla}.mmm.bluesky.adjudicators"],
         bootstrap_servers=",".join(kafka_config["bootstrap_servers"]),
         group_id=f"echo-{tla}-{str(uuid.uuid4())[:8]}",
-        consumer_config=kafka_config["runengine_producer_config"],
+        consumer_config={"auto.offset.reset": 'smallest', **kafka_config["runengine_producer_config"]},
+        switchboard_prefix='XF:28ID1-DA{SB:1}'
     )
+    adjudicator._switchboard.wait_for_connection()
+    print(adjudicator._switchboard.read())
     adjudicator.start()
