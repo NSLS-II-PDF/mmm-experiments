@@ -1,5 +1,6 @@
 import logging
 import signal
+import time
 
 from mmm_experiments.agents.pdf import CMFAgent
 
@@ -8,10 +9,10 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     try:
         agent = CMFAgent(
-            sample_origin=(69.2, 2.0),
-            relative_bounds=(-30, 30),
-            metadata={},
-            num_components=5,
+            sample_origin=(104, 92.0),
+            relative_bounds=(-68, 0),
+            metadata=dict(init_time=time.time(), notes="Overnight passive run on half wafer"),
+            num_components=7,
             ask_mode="unconstrained",
             ask_on_tell=False,
             report_on_tell=False,

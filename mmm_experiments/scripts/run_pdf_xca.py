@@ -1,5 +1,6 @@
 import logging
 import signal
+import time
 from pathlib import Path
 
 import numpy as np
@@ -11,9 +12,9 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     try:
         agent = XCAActiveAgent(
-            sample_origin=(69.2, 2.0),
-            relative_bounds=(-30, 30),
-            metadata={},
+            sample_origin=(104, 92.0),
+            relative_bounds=(-68, 0),
+            metadata=dict(init_time=time.time(), notes="Overnight passive run on half wafer"),
             botorch_device="cuda:3",
             xca_device="cuda:2",
             model_qspace=np.linspace(0.065, 7.89, 3000),

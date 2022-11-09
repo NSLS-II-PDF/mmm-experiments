@@ -9,9 +9,9 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     try:
         agent = GeometricAgent(
-            sample_origin=(105, 88.7),
+            sample_origin=(104, 92.0),
             relative_bounds=(-68, 0),
-            metadata=dict(init_time=time.time(), notes="Agent run on whole wafer as initial test"),
+            metadata=dict(init_time=time.time(), notes="Overnight passive run on half wafer"),
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.start(ask_at_start=True)
