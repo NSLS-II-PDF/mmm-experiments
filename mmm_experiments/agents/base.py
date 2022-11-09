@@ -569,7 +569,7 @@ class GeometricResolutionMixin(SequentialAgentMixin):
     Uses `tell` method of SequentialAgentMixin
     """
 
-    def __init__(self, *, min_resolution=float, **kwargs):
+    def __init__(self, *, min_resolution: float, **kwargs):
         super().__init__(**kwargs)
         self.min_resolution = min_resolution
         self._queue = self.build_geometric_queue(min_resolution, self.relative_min, self.relative_max)
