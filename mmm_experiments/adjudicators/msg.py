@@ -1,16 +1,16 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 DEFAULT_NAME = "agent_suggestions"
 
 
-class Suggestion(BaseModel):
+class Suggestion(BaseModel, extra=Extra.forbid):
     ask_uid: str  # UID from the agent ask message
     plan_name: str
     plan_args: list = []
     plan_kwargs: dict = {}
 
 
-class AdjudicatorMsg(BaseModel):
+class AdjudicatorMsg(BaseModel, extra=Extra.forbid):
     agent_name: str
     suggestions_uid: str
     suggestions: dict[str, list[Suggestion]]  # TLA: list

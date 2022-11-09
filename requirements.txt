@@ -16,3 +16,4 @@ area-detector-handlers
 humanize
 doct
 xkcdpass
+pydantic

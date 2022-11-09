@@ -389,12 +389,13 @@ class Agent(ABC):
             kwargs.setdefault("md", {})
             kwargs["md"].update(self.default_plan_md)
             kwargs["md"]["agent_ask_uid"] = uid
+            args = self.measurement_plan_args(point)
             suggestions.append(
                 Suggestion(
                     ask_uid=uid,
                     plan_name=self.measurement_plan_name,
-                    args=self.measurement_plan_args(point),
-                    kwargs=self.measurement_plan_kwargs(point),
+                    plan_args=args,
+                    plan_kwargs=kwargs,
                 )
             )
         msg = AdjudicatorMsg(
