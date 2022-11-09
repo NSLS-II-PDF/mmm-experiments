@@ -45,6 +45,7 @@ class PDFAgent(Agent, ABC):
         sample_origin: Tuple[float, float],
         relative_bounds: Tuple[float, float],
         metadata: Optional[dict] = None,
+        sample_number: int = 0,
         **kwargs,
     ):
         """
@@ -65,7 +66,7 @@ class PDFAgent(Agent, ABC):
         self._relative_bounds = relative_bounds
         self.xrd_background = self.get_wafer_background("xrd")
         self.pdf_background = self.get_wafer_background("pdf")
-        self._sample_number = 0
+        self._sample_number = sample_number
 
     @property
     def measurement_origin(self):
