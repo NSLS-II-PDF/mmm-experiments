@@ -372,16 +372,16 @@ class Agent(ABC):
 
     def add_suggestions_to_queue(self, batch_size: int):
         """Calls ask, adds suggestions to queue, and writes out event"""
-        logging.info("Issuing ask and adding to the queue.")
         doc, next_points = self.ask(batch_size)
         uid = self._write_event("ask", doc)
+        logging.info(f"Issued ask and adding to the queue. {uid}")
         self._add_to_queue(next_points, uid)
         self._check_queue_and_start()
 
     def generate_suggestions_for_adjudicator(self, batch_size: int):
-        logging.info("Issuing ask and sending to adjudicator.")
         doc, next_points = self.ask(batch_size)
         uid = self._write_event("ask", doc)
+        logging.info(f"Issued ask and sending to adjudicator. {uid}")
         suggestions = []
         for point in next_points:
             kwargs = self.measurement_plan_kwargs(point)
@@ -404,9 +404,9 @@ class Agent(ABC):
         self.kafka_producer(ADJUDICATOR_STREAM_NAME, msg.dict())
 
     def generate_report(self, **kwargs):
-        logging.info("Issuing report request and writing to Mongo.")
         doc = self.report(**kwargs)
-        self._write_event("report", doc)
+        uid = self._write_event("report", doc)
+        logging.info(f"Issued report request and writing to Mongo. {uid}")
 
     @staticmethod
     def trigger_condition(uid) -> bool:
