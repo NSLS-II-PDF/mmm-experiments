@@ -45,7 +45,7 @@ BMM
 PDF - Nov
 =========
 Whole wafer
-sample_origin=(105, 88.7),
+sample_origin=(104, 92.8),
 relative_bounds=(-68, 0),
 
 
