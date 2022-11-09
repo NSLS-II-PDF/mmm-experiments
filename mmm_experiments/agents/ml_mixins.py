@@ -382,7 +382,7 @@ class XCAValueMixin(XCAMixin):
             else qUpperConfidenceBound(gp, beta=self._beta)
         )
         next_points, acq_value = optimize_acqf(
-            acq, bounds=self.relative_bounds, q=batch_size, num_restarts=5, raw_samples=20
+            acq, bounds=torch.tensor(self.relative_bounds).view(2, 1), q=batch_size, num_restarts=5, raw_samples=20
         )
         next_points = (
             [float(next_points.cpu().numpy())]
