@@ -277,7 +277,7 @@ class Agent(ABC):
 
     @property
     def report_on_tell(self) -> bool:
-        return self._ask_on_tell
+        return self._report_on_tell
 
     @report_on_tell.setter
     def report_on_tell(self, flag: bool):
