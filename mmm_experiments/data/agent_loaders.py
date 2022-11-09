@@ -88,6 +88,29 @@ def get_latest_document(run, doc_type):
     return latest
 
 
+def get_list_of_documents(run):
+    descriptor_cache = {}
+    asks = []
+    tells = []
+    reports = []
+
+    def _callback(name, doc):
+        nonlocal latest
+        if name == "descriptor":
+            descriptor_cache[doc["uid"]] = doc["name"]
+        if name == "event":
+            stream = descriptor_cache[doc["descriptor"]]
+            if stream == "tell":
+                tells.append(doc)
+            elif stream == "report":
+                reports.append(doc)
+            elif stream == "ask":
+                asks.append(doc)
+
+    replay(run.documents(), _callback, burst=True)
+    return tells, reports, asks
+
+
 def load_full_xca_run(uid):
     measured_data = []
     # measured_positions = []
