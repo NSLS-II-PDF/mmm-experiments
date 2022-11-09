@@ -357,17 +357,17 @@ class XCAValueMixin(XCAMixin):
 
     def report(self, **kwargs):
         doc = super().report(**kwargs)
-        value = scientific_value_function(np.array(self.independent_cache), np.stack(self.latent_cache)).reshape(
-            -1, 1
+        value = scientific_value_function(
+            np.array(self.independent_cache).reshape(-1, 1), np.stack(self.latent_cache)
         )
         doc["value"] = value.squeeze()
         doc["cache_len"] = len(self.independent_cache)
         return doc
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
-        value = scientific_value_function(np.array(self.independent_cache), np.stack(self.latent_cache)).reshape(
-            -1, 1
-        )
+        value = scientific_value_function(
+            np.array(self.independent_cache).reshape(-1, 1), np.stack(self.latent_cache)
+        ).reshape(-1, 1)
         train_x = torch.tensor(np.array(self.independent_cache), dtype=torch.float, device=self.botorch_device)
         train_y = torch.tensor(value, dtype=torch.float, device=self.botorch_device)
 
