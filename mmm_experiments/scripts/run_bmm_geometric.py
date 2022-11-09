@@ -11,7 +11,8 @@ if __name__ == "__main__":
         agent = GeometricAgent(
             origin=(183.818, 122.319),
             relative_bounds=(-28, 37),
-            metadata=dict(init_time=time.time(), notes="Overnight run on half wafer doing geometric grid search."),
+            metadata=dict(init_time=time.time(), notes="Day of work testing."),
+            min_resolution=0.15,
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.independent_cache.append(0.0)
