@@ -6,7 +6,7 @@ from mmm_experiments.agents.bmm import ScientificValue
 
 if __name__ == "__main__":
     logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     try:
         agent = ScientificValue(
             device="cpu",
