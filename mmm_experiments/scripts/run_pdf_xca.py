@@ -19,7 +19,8 @@ if __name__ == "__main__":
             xca_device="cpu",
             model_qspace=np.linspace(0.065, 7.89, 3000),
             model_checkpoint=Path(__file__).parents[1] / "models" / "2022-nov" / "low_q_low_fidelity.ckpt",
-            ask_on_tell=False,
+            ask_on_tell=True,
+            direct_to_queue=False,
             report_on_tell=True,
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
