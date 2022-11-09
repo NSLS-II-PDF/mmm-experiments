@@ -46,11 +46,13 @@ class BMMSingleEdgeAgent(Agent, ABC):
         origin: Tuple[float, float],
         relative_bounds: Tuple[float, float],
         metadata: Optional[dict] = None,
+        exp_filename: str = "MultimodalMadness",
         **kwargs,
     ):
         super().__init__(beamline_tla="bmm", metadata=metadata, **kwargs)
         self.origin = origin
         self._relative_bounds = relative_bounds
+        self.exp_filename = exp_filename
 
     def measurement_plan_args(self, point):
         """List of arguments to pass to plan.
@@ -64,7 +66,7 @@ class BMMSingleEdgeAgent(Agent, ABC):
 
     def measurement_plan_kwargs(self, point) -> dict:
         return dict(
-            filename="MultimodalMadnessElectionDay",
+            filename=self.exp_filename,
             nscans=1,
             start="next",
             mode="transmission",
@@ -130,6 +132,7 @@ class BMMAgent(Agent, ABC):
         Ti_det_position: float,
         relative_bounds: Tuple[float, float],
         metadata: Optional[dict] = None,
+        exp_filename: str = "MultimodalMadness",
         **kwargs,
     ):
         """
@@ -156,6 +159,7 @@ class BMMAgent(Agent, ABC):
         self.Cu_det_position = Cu_det_position
         self.Ti_det_position = Ti_det_position
         self._relative_bounds = relative_bounds
+        self.exp_filename = exp_filename
 
     @staticmethod
     def unpack_run(run: databroker.client.BlueskyRun):
@@ -183,7 +187,7 @@ class BMMAgent(Agent, ABC):
         return dict(
             Cu_det_position=self.Cu_det_position,
             Ti_det_position=self.Ti_det_position,
-            filename="MultimodalMadnessSundayProd",
+            filename=self.exp_filename,
             nscans=1,
             start="next",
             mode="fluorescence",
