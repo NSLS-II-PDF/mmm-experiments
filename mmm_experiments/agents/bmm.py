@@ -52,7 +52,14 @@ class BMMSingleEdgeAgent(Agent, ABC):
         super().__init__(beamline_tla="bmm", metadata=metadata, **kwargs)
         self.origin = origin
         self._relative_bounds = relative_bounds
-        self.exp_filename = exp_filename
+        self._exp_filename = exp_filename
+
+    @property
+    def exp_filename(self):
+        return self._exp_filename
+
+    def set_filename(self, filename: str):
+        self._exp_filename = filename
 
     def measurement_plan_args(self, point):
         """List of arguments to pass to plan.
