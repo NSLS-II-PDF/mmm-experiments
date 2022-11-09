@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections import deque
 from copy import deepcopy
 from threading import Lock
+import pprint
 
 from bluesky_kafka import BlueskyConsumer
 from bluesky_queueserver_api import BPlan
@@ -145,13 +146,28 @@ class AgentByModeAdjudicator(AdjudicatorBase):
                 self._add_suggestion_to_queue(agent_name, suggestion)
 
 
+class NoisyButSafeAdjudicator(AgentByModeAdjudicator):
+    def _add_suggestion_to_queue(self, agent_name, suggestion):
+        if suggestion.ask_uid in self._uid_deque_set:
+            logger.warning(
+                f"Ask uid {suggestion.ask_uid} has already been seen. Not adding anything to the queue."
+            )
+            return
+        else:
+            self._uid_deque_set.append(suggestion.ask_uid)
+        kwargs = dict(suggestion.plan_kwargs)
+        kwargs["md"]["agent_ask_uid"] = suggestion.ask_uid
+        kwargs["md"]["agent_name"] = agent_name
+        pprint.pprint((suggestion.plan_name, suggestion.plan_args, kwargs))
+
+
 if __name__ == "__main__":
     import uuid
 
     kafka_config = _read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
     tla = "pdf"
 
-    class SimpleAdjudicator(AgentByModeAdjudicator):
+    class SimpleAdjudicator(NoisyButSafeAdjudicator):
         server_host = "https://qserver.nsls2.bnl.gov/pdf"
         api_key = "yyyyy"
 
