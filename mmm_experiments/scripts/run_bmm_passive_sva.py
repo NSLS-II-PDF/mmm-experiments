@@ -9,10 +9,13 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     try:
         agent = ScientificValue(
-            device="cpu",
+            device="cuda:1",
             origin=(183.818, 122.319),
             relative_bounds=(-28, 37),
-            metadata=dict(init_time=time.time(), notes="Agent run on half wafer as initial test"),
+            metadata=dict(
+                init_time=time.time(),
+                notes="Overnight passive run on half wafer. Spectral distance scientific value agent.",
+            ),
             ask_on_tell=True,
             direct_to_queue=False,
             report_on_tell=True,

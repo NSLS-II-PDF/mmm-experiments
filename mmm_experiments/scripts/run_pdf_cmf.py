@@ -9,10 +9,10 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     try:
         agent = CMFAgent(
-            sample_origin=(104, 92.0),
-            relative_bounds=(-68, 0),
+            sample_origin=(67.2, 92.0),
+            relative_bounds=(-30.2, 36.8),
             metadata=dict(init_time=time.time(), notes="Overnight passive run on half wafer"),
-            num_components=4,
+            num_components=7,
             ask_mode="unconstrained",
             ask_on_tell=True,
             report_on_tell=True,
