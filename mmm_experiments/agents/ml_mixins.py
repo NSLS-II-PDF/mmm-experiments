@@ -76,7 +76,7 @@ class CMFMixin:
         self.ask_mode = ask_mode
 
     def tell(self, position, y) -> dict:
-        relative_position = position - self.measurement_origin
+        relative_position = self.get_absolute_position(position)
         self.independent_cache.append(relative_position)
         self.dependent_cache.append(np.atleast_2d(y))
         self.sorted_positions, self.sorted_dataset = zip(
@@ -271,7 +271,7 @@ class XCAMixin:
         return run.start["Grid_X"]["Grid_X"]["value"], spectra
 
     def tell(self, position, intensity):
-        rel_position = position - self.measurement_origin
+        rel_position = self.get_relative_position(position)
 
         with torch.no_grad():
             x = torch.tensor(intensity.ravel(), dtype=torch.float, device=self.device)[None, None, :]
@@ -309,7 +309,9 @@ class XCAMixin:
     def report(self, **kwargs):
         """Return document of all relevant caches for plotting. Expected shapes/types in comments."""
         return dict(
-            absolute_positions=[[pos + self.measurement_origin for pos in self.independent_cache]],  # List[float]
+            absolute_positions=[
+                [self.get_absolute_position(pos) for pos in self.independent_cache]
+            ],  # List[float]
             relative_positions=[self.independent_cache],  # List[float]
             resampled_normalized_patterns=[
                 np.stack(self.dependent_cache)

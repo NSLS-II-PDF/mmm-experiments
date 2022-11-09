@@ -119,8 +119,8 @@ class ScientificValueAgentMixin:
     that the user does not need to set any parameters explicitly, though one
     can manually set a length scale if desired.
 
-    Assumes that ``relative_bounds`` and ``measurement_origin`` are
-    defined as attributes.
+    Assumes that ``get_relative_position`` and ``get_absolute_position`` are
+    defined as methods.
     """
 
     def __init__(
@@ -183,7 +183,7 @@ class ScientificValueAgentMixin:
         """
 
         # Using the relative position for all learning
-        relative_position = position - self.measurement_origin
+        relative_position = self.get_relative_position(position)
 
         self._positions_cache.append(position)
         self._relative_positions_cache.append(relative_position)
