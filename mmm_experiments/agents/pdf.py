@@ -6,6 +6,7 @@ from typing import Literal, Optional, Tuple, Union
 import numpy as np
 import xarray
 from databroker.client import BlueskyRun
+from scientific_value import ScientificValueAgentMixin
 from tiled.client import from_profile
 
 from .base import (
@@ -232,3 +233,7 @@ class XCAActiveAgent(XCAValueMixin, PDFAgent):
             botorch_device=botorch_device,
             **kwargs,
         )
+
+
+class ScientificValue(ScientificValueAgentMixin, PDFAgent):
+    """Scientific value agent for BMM"""
