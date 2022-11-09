@@ -13,7 +13,7 @@ if __name__ == "__main__":
     try:
         agent = XCAActiveAgent(
             sample_origin=(104, 92.0),
-            relative_bounds=(-68, 0),
+            relative_bounds=(-68.0, 0.0),
             metadata=dict(init_time=time.time(), notes="Overnight passive run on half wafer"),
             botorch_device="cpu",
             xca_device="cpu",
