@@ -12,10 +12,11 @@ if __name__ == "__main__":
             sample_origin=(104, 92.0),
             relative_bounds=(-68, 0),
             metadata=dict(init_time=time.time(), notes="Overnight passive run on half wafer"),
-            num_components=7,
+            num_components=4,
             ask_mode="unconstrained",
-            ask_on_tell=False,
+            ask_on_tell=True,
             report_on_tell=True,
+            direct_to_queue=False,
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.start(ask_at_start=False)
