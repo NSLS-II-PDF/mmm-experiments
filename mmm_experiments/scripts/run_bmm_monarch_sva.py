@@ -45,7 +45,7 @@ if __name__ == "__main__":
             report_on_tell=True,
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
-        agent.start(ask_at_start=False)
+        agent.start(ask_at_start=True)
     except Exception as e:
         agent.stop(exit_status="fail", reason=f"{e}")
         raise e
