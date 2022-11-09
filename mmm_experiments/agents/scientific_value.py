@@ -211,6 +211,14 @@ class ScientificValueAgentMixin:
         )
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        if len(self._relative_positions_cache) < 3:
+            points = list(np.random.uniform(self.relative_bounds[0], self.relative_bounds[1], batch_size))
+            doc = dict(
+                batch_size=[batch_size],
+                next_points=[points],
+                acq_value=[[0.0 for _ in range(batch_size)]],
+            )
+            return doc, points
 
         value = self._value_function(
             np.array(self._relative_positions_cache).reshape(-1, 1), np.stack(self._observations_cache)
