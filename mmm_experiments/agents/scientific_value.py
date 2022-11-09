@@ -234,6 +234,7 @@ class ScientificValueAgentMixin:
         next_points, acq_value = optimize_acqf(
             acq,
             bounds=torch.tensor(self.relative_bounds, dtype=torch.float).view(2, 1),
+            q=batch_size,
             **self._optimize_acqf_kwargs,
         )
 
