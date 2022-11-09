@@ -199,7 +199,9 @@ class ScientificValueAgentMixin:
 
     def report(self):
         # The value is a scalar
-        value = self._value_function(np.array(self._relative_positions_cache), np.array(self._observations_cache))
+        value = self._value_function(
+            np.array(self._relative_positions_cache).reshape(-1, 1), np.stack(self._observations_cache)
+        )
         value = value.reshape(-1, 1)
         return dict(
             position=[self._positions_cache],
@@ -211,7 +213,9 @@ class ScientificValueAgentMixin:
 
     def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
 
-        value = self._value_function(np.array(self._relative_positions_cache), np.array(self._observations_cache))
+        value = self._value_function(
+            np.array(self._relative_positions_cache).reshape(-1, 1), np.stack(self._observations_cache)
+        )
         value = value.reshape(-1, 1)
 
         train_x = torch.tensor(self._relative_positions_cache, dtype=torch.float)
