@@ -218,7 +218,7 @@ class ScientificValueAgentMixin:
         )
         value = value.reshape(-1, 1)
 
-        train_x = torch.tensor(self._relative_positions_cache, dtype=torch.float)
+        train_x = torch.tensor(self._relative_positions_cache, dtype=torch.float).view(-1, 1)
         train_x = train_x.to(self.device)
         train_y = torch.tensor(value, dtype=torch.float)
         train_y = train_y.to(self.device)
@@ -234,7 +234,7 @@ class ScientificValueAgentMixin:
 
         next_points, acq_value = optimize_acqf(
             acq,
-            bounds=self.relative_bounds,
+            bounds=torch.tensor(self.relative_bounds, dtype=torch.float).view(2, 1),
             **self._optimize_acqf_kwargs,
         )
 
