@@ -15,7 +15,7 @@ if __name__ == "__main__":
             num_components=7,
             ask_mode="unconstrained",
             ask_on_tell=False,
-            report_on_tell=False,
+            report_on_tell=True,
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.start(ask_at_start=False)
