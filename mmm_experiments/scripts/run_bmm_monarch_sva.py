@@ -26,6 +26,7 @@ if __name__ == "__main__":
             sample_number=9,
             direct_to_queue=True,
         )
+        subject_agent.queue_add_position = "front"
 
         agent = BMMSVAMonarch(
             subjects=[subject_agent],
