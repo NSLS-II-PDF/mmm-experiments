@@ -2,6 +2,7 @@ import logging
 import sys
 import uuid
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import Iterable, Literal, Optional, Sequence, Tuple, Union
 
 import databroker.client
@@ -568,6 +569,56 @@ class GeometricResolutionMixin(SequentialAgentMixin):
     Uses `tell` method of SequentialAgentMixin
     """
 
+    def __init__(self, *, min_resolution=float, **kwargs):
+        super().__init__(**kwargs)
+        self.min_resolution = min_resolution
+        self._queue = self.build_geometric_queue(min_resolution, self.relative_min, self.relative_max)
+        logging.info(
+            f"Geometric agent created queue with relative min {np.min(self._queue)} and max {np.max(self._queue)}"
+        )
+        if np.min(self._queue) < self.relative_min or np.max(self._queue) > self.relative_max:
+            raise RuntimeError("The GeometricAgent queue contains points outside the initilizaed bounds...")
+
+    @staticmethod
+    def build_geometric_queue(min_resolution, relative_min, relative_max):
+        step = (relative_max - relative_min) / 2
+        queue = deque()
+        s = set()
+        queue.append(float(relative_min))
+        s.add(float(relative_min))
+        queue.append(float(relative_max))
+        s.add(float(relative_max))
+
+        while step > min_resolution:
+            for i in np.arange(relative_min, relative_max, step):
+                if i in s:
+                    continue
+                else:
+                    s.add(i)
+                    queue.append(i)
+            step /= 2
+        return queue
+
+    def ask(self, batch_size: int = 1) -> Tuple[dict, Sequence]:
+        points = [self._queue.popleft() for i in range(batch_size)]
+        doc = dict(
+            suggestions=[points], absolute_positions=[[self.get_absolute_position(point) for point in points]]
+        )
+        return doc, points
+
+    @property
+    def name(self):
+        return "geometric"
+
+
+class GeometricResolutionMixinARXIV(SequentialAgentMixin):
+    "CLASS ARXIVED AFTER ELECTION DAY BUGS"
+    """
+    Mixin to be used with Agent children.
+    Performs a gridsearch with increasing resolution
+    Uses `tell` method of SequentialAgentMixin
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.points_per_batch = 0
@@ -607,15 +658,6 @@ class GeometricResolutionMixin(SequentialAgentMixin):
             doc = dict(ask_ready=[False], acummulated_stops=[self.acumulated_stops], proposal=[-10000.0])
             points = []
         return doc, points
-
-    def _check_queue_and_start(self):
-        """
-        Override the exaclty 1 rule and always start the queue if its idle and I just added plans.
-        """
-        status = self.re_manager.status(reload=True)
-        if status["worker_environment_exists"] is True and status["manager_state"] == "idle":
-            self.re_manager.queue_start()
-            logging.info("Agent is starting an idle queue.")
 
     @property
     def name(self):
