@@ -383,7 +383,7 @@ class XCAValueMixin(XCAMixin):
         )
         next_points, acq_value = optimize_acqf(
             acq,
-            bounds=torch.tensor(self.relative_bounds, dtype=torch.float).view(2, 1),
+            bounds=torch.tensor(self.relative_bounds, dtype=torch.float, device=self.botorch_device).view(2, 1),
             q=batch_size,
             num_restarts=5,
             raw_samples=20,
