@@ -74,10 +74,12 @@ class CMFMixin:
 
     def update_num_components(self, num_components: int):
         """Convenience method exposed to plans for updating via kafka."""
+        logger.info(f"Updating number of components to {num_components}")
         self.num_components = num_components
 
     def update_ask_mode(self, ask_mode: str):
         """Convenience method exposed to plans for updating via kafka."""
+        logger.info(f"Updating ask mode to {ask_mode}")
         self.ask_mode = ask_mode
 
     def tell(self, position, y) -> dict:
