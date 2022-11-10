@@ -40,7 +40,7 @@ if __name__ == "__main__":
             metadata=dict(init_time=time.time(), notes="PDF Monarch conducting CMF on the whole dataset."),
             ask_on_tell=False,
             direct_to_queue=False,
-            report_on_tell=True,
+            report_on_tell=False,
             lustre_path="/nsls2/data/pdf/scratch/mmm_stuff",
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
