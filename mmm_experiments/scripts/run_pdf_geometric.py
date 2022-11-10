@@ -13,7 +13,7 @@ if __name__ == "__main__":
             relative_bounds=(-30.2, 36.8),
             metadata=dict(init_time=time.time(), notes="Sensible geometric search over PDF."),
             min_resolution=0.2,
-            sample_number=10,
+            sample_number=11,
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.start(ask_at_start=True)
