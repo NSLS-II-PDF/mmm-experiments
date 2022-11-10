@@ -83,7 +83,7 @@ class CMFMixin:
         self.ask_mode = ask_mode
 
     def tell(self, position, y) -> dict:
-        relative_position = self.get_absolute_position(position)
+        relative_position = self.get_relative_position(position)
         self.independent_cache.append(relative_position)
         self.dependent_cache.append(np.atleast_2d(y))
         self.sorted_positions, self.sorted_dataset = zip(
