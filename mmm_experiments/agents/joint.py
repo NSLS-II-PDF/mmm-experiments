@@ -17,7 +17,7 @@ from mmm_experiments.adjudicators.msg import AdjudicatorMsg
 
 from .base import Agent, GeometricResolutionMixin, SequentialAgentMixin
 from .bmm import BMMAgent, BMMSingleEdgeAgent
-from .ml_mixins import XCAValueMixin
+from .ml_mixins import CMFMixin, XCAValueMixin
 from .pdf import PDFAgent
 from .scientific_value import ScientificValueAgentMixin
 
@@ -369,4 +369,8 @@ class BMMSVAMonarch(ScientificValueAgentMixin, BMMMonarch):
 
 
 class PDFXCAMonarch(XCAValueMixin, PDFMonarch):
+    ...
+
+
+class PDFCMFMonarch(CMFMixin, PDFMonarch):
     ...

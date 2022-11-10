@@ -1,16 +1,15 @@
-"""This agent is designed to run along side a geometric grid, and then after some time take over.
-The take over can be accomplished by the user triggering `enable_continuous_suggesting`,
+"""
+This agent is designed to run along side a geometric grid and develop a wholistic vision of the system.
+When the CMF decomposition is adequate, it can be used to trigger a batch on BMM representing
+the most distinct regions.
 Requests can be made to BMM using `add_suggestions_to_subject_queues`.
 """
 import logging
 import signal
 import time
-from pathlib import Path
-
-import numpy as np
 
 from mmm_experiments.agents import bmm
-from mmm_experiments.agents.joint import PDFXCAMonarch
+from mmm_experiments.agents.joint import PDFCMFMonarch
 
 
 class BMMSubject(bmm.RandomAgent):
@@ -30,23 +29,16 @@ if __name__ == "__main__":
         )
         subject_agent.queue_add_position = "front"
 
-        agent = PDFXCAMonarch(
+        agent = PDFCMFMonarch(
             subjects=[subject_agent],
             direct_subjects_on_tell=False,
             sample_origin=(67.2, 92.0),
             relative_bounds=(-30.2, 36.8),
-            sample_number=0,
-            botorch_device="cuda:2",
-            xca_device="cuda:3",
-            model_qspace=np.linspace(0.065, 7.89, 3000),
-            model_checkpoint=Path(__file__).parents[1] / "models" / "2022-nov" / "low_q_low_fidelity.ckpt",
-            metadata=dict(
-                init_time=time.time(),
-                notes="PDF Monarch using XCA latent space -> scientific value agent. "
-                "Will be used in mature measurement to drive PDF and suggest on BMM",
-            ),
+            num_components=7,
+            ask_mode="unconstrained",
+            metadata=dict(init_time=time.time(), notes="PDF Monarch conducting CMF on the whole dataset."),
             ask_on_tell=False,
-            direct_to_queue=True,
+            direct_to_queue=False,
             report_on_tell=True,
             lustre_path="/nsls2/data/pdf/scratch/mmm_stuff",
         )
