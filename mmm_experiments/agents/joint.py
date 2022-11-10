@@ -301,7 +301,9 @@ class MonarchBase(Agent, ABC):
             agent.kafka_consumer = None
 
     def add_suggestions_to_subject_queues(self, batch_size: int):
+        logger.info(f"Generating new points for subject queue by {self.agent_name}")
         doc, next_points = self.ask(batch_size)
+        logger.info(f"Generated points for subject {next_points}")
         uid = self._write_event("subject_ask", doc)
         for agent in self.subjects:
             logger.info(
