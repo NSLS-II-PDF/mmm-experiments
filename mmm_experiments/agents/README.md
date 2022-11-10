@@ -32,6 +32,9 @@ https://github.com/NSLS-II-PDF/mmm-experiments/blob/2e696153515da23ef4b7f591c660
 For BMM specifically: 
 https://github.com/NSLS-II-PDF/mmm-experiments/blob/2e696153515da23ef4b7f591c6600df1b8c4e733/mmm_experiments/agents/bmm.py#L61-L62
 
+For the MonarchSubject:
+https://github.com/NSLS-II-PDF/mmm-experiments/blob/2f0b628aa0679518bee05db23c0111e4fa278f21/mmm_experiments/agents/joint.py#L303-L325
+
 To grab at specific documents from Tiled, the interface is a little clunky (for now...). Example code to grab the most
 recent `report` from an agent_name. I will work on getting this functionality into the repo soon.:
 ```python
