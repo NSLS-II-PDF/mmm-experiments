@@ -472,7 +472,9 @@ class Agent(ABC):
     def tell_agent_by_uid(self, uids: Iterable):
         """Give an agent an iterable of uids to learn from.
         This is an optional behavior for priming an agent without a complete restart."""
+        logging.info("Telling agent list of uids")
         for uid in uids:
+            logging.info(f"Telling agent about start document{uid}")
             run = self.exp_catalog[uid]
             independent_variable, dependent_variable = self.unpack_run(run)
             doc = self.tell(independent_variable, dependent_variable)
