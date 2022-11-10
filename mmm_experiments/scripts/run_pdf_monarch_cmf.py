@@ -25,7 +25,7 @@ if __name__ == "__main__":
             relative_bounds=(-28, 37),
             metadata=dict(init_time=time.time(), notes="Subject for PDF Monarch."),
             direct_to_queue=True,
-            exp_filename="MultimodalMadness",
+            exp_filename="MultimodalMadnessCMFSubject",
         )
         subject_agent.queue_add_position = "front"
 
@@ -34,7 +34,8 @@ if __name__ == "__main__":
             direct_subjects_on_tell=False,
             sample_origin=(67.2, 92.0),
             relative_bounds=(-30.2, 36.8),
-            num_components=7,
+            sample_number=10,
+            num_components=5,
             ask_mode="unconstrained",
             metadata=dict(init_time=time.time(), notes="PDF Monarch conducting CMF on the whole dataset."),
             ask_on_tell=False,

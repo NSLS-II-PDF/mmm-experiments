@@ -369,8 +369,16 @@ class BMMSVAMonarch(ScientificValueAgentMixin, BMMMonarch):
 
 
 class PDFXCAMonarch(XCAValueMixin, PDFMonarch):
+    @property
+    def name(self) -> str:
+        return "xca_value_monarch"
+
     ...
 
 
 class PDFCMFMonarch(CMFMixin, PDFMonarch):
+    @property
+    def name(self) -> str:
+        return "cmf_monarch"
+
     ...

@@ -23,7 +23,7 @@ if __name__ == "__main__":
             sample_origin=(67.2, 92.0),
             relative_bounds=(-30.2, 36.8),
             metadata=dict(init_time=time.time(), notes="Subject for BMM Monarch."),
-            sample_number=9,
+            sample_number=10,
             direct_to_queue=True,
         )
         subject_agent.queue_add_position = "front"
@@ -31,7 +31,7 @@ if __name__ == "__main__":
         agent = BMMSVAMonarch(
             subjects=[subject_agent],
             direct_subjects_on_tell=True,
-            exp_filename="MultimodalMadness-SVAMonarch-Testing",
+            exp_filename="MultimodalMadness-SVAMonarch",
             device="cuda:1",
             origin=(183.818, 122.319),
             relative_bounds=(-28, 37),

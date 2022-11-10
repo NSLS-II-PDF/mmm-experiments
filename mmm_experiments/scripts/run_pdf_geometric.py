@@ -11,9 +11,9 @@ if __name__ == "__main__":
         agent = GeometricAgent(
             sample_origin=(67.2, 92.0),
             relative_bounds=(-30.2, 36.8),
-            metadata=dict(init_time=time.time(), notes="Day Of work testing."),
+            metadata=dict(init_time=time.time(), notes="Sensible geometric search over PDF."),
             min_resolution=0.2,
-            sample_number=8,
+            sample_number=10,
         )
         signal.signal(signal.SIGINT, agent.signal_handler)
         agent.start(ask_at_start=True)

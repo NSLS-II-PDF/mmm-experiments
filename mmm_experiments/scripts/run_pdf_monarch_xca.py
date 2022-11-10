@@ -26,7 +26,7 @@ if __name__ == "__main__":
             relative_bounds=(-28, 37),
             metadata=dict(init_time=time.time(), notes="Subject for PDF Monarch."),
             direct_to_queue=True,
-            exp_filename="MultimodalMadness",
+            exp_filename="MultimodalMadnessXCASubject",
         )
         subject_agent.queue_add_position = "front"
 
@@ -35,7 +35,7 @@ if __name__ == "__main__":
             direct_subjects_on_tell=False,
             sample_origin=(67.2, 92.0),
             relative_bounds=(-30.2, 36.8),
-            sample_number=0,
+            sample_number=10,
             botorch_device="cuda:2",
             xca_device="cuda:3",
             model_qspace=np.linspace(0.065, 7.89, 3000),
