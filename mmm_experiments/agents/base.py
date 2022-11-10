@@ -337,6 +337,11 @@ class Agent(ABC):
 
         """
         for point in next_points:
+            if not self.relative_bounds[0] < point < self.relative_bounds[1]:
+                logging.warning(
+                    f"Suggested point {point} is not within bounds {self.relative_bounds}. Skipping..."
+                )
+                continue
             kwargs = self.measurement_plan_kwargs(point)
             kwargs.setdefault("md", {})
             kwargs["md"].update(self.default_plan_md)
