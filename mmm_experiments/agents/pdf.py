@@ -135,7 +135,7 @@ class PDFAgent(Agent, ABC):
         else:
             background = self.pdf_background
         scaler = self.bkg_scaler(x, y, background)
-        y = y - float(scaler) * np.array(background["chi_I"])
+        y = np.array(y) - float(scaler) * np.array(background["chi_I"])
         y = (y - y.min()) / (y.max() - y.min())
         return run.start["Grid_X"]["Grid_X"]["value"], y
 
