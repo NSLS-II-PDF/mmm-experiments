@@ -129,6 +129,7 @@ class CMFMixin:
         if self.lustre_path:
             with open(Path(self.lustre_path) / f"{self.agent_name}-report.pkl", "wb") as f:
                 pickle.dump(doc, f, protocol=pickle.HIGHEST_PROTOCOL)
+        return doc
 
     @property
     def ask_mode(self):
