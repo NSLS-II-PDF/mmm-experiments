@@ -1,0 +1,16 @@
+[project]
+authors = ["Thomas A Caswell <tcaswell@bnl.gov>"]
+channels = ["conda-forge"]
+name = "mmm-experiments"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+zmq_bridge = {cmd = "python -m mmm_experiments.data.zmq_bridge", env = {TILED_SITE_PROFILES="/nsls2/software/etc/tiled/profiles"}, cwd='.'}
+
+[dependencies]
+python = ">=3.13.3,<3.14"
+tiled = ">=0.1.0b28,<0.2"
+bluesky = ">=1.14.1,<2"
+nslsii = ">=0.11.2,<0.12"
+pyfai = ">=2025.3.0,<2026"

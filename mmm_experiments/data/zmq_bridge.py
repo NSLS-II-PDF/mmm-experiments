@@ -95,7 +95,7 @@ def start(zmq_address, zmq_prefix, beamline, document_source):
     # subscribes inside, this pushes the documets to kafka
     configure_kafka_publisher(rd, beamline, document_source=document_source, transformer=transformer)
     # get the document-aware sandbox
-    cat = from_profile("pdf_bluesky_sandbox")
+    cat = from_profile('nsls2')["pdf"]["bluesky_sandbox"]
     # subscribe to insert the reduced data as well
     rd.subscribe(lambda name, doc: cat.v1.insert(*transformer(name, doc)))
     # start the dispatcher
