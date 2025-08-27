@@ -2,7 +2,6 @@
 from textwrap import dedent
 
 from caproto.server import PVGroup, ioc_arg_parser, pvproperty, run
-from caproto.server import PvpropertyInteger as Integer
 
 
 class PDFMMMSwitchBoard(PVGroup):
@@ -21,7 +20,7 @@ class PDFMMMSwitchBoard(PVGroup):
 
     publish_to_queue = pvproperty(
         value=1,
-        dtype=Integer,
+        dtype=int,
         name="Pub-CMD",
         doc="""A flag to be used to tell the adjudicator to do it's job.
 
